@@ -22,7 +22,7 @@ func newNode256() *artNode {
 	return &artNode{kind: NODE_256, ref: unsafe.Pointer(&node256{})}
 }
 
-func newNodeFrom(an *artNode) *artNode {
+func growNode(an *artNode) *artNode {
 	//fmt.Printf("newNodeFrom %v\n", an)
 	switch an.kind {
 	case NODE_4:

@@ -14,22 +14,6 @@ func memcpy(dest []byte, src []byte, numBytes int) {
 	}
 }
 
-func keyChar(key Key, pos int) byte {
-	if pos >= 0 && pos < len(key) {
-		return key[pos]
-	} else {
-		return 0
-	}
-}
-
-func prefixChar(prefix [MAX_PREFIX_LENGTH]byte, pos int) byte {
-	if pos >= 0 && pos < len(prefix) {
-		return prefix[pos]
-	} else {
-		return 0
-	}
-}
-
 func copyMeta(dst, src *artNode) *artNode {
 	if dst == nil || src == nil {
 		return dst

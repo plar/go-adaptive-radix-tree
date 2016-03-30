@@ -72,7 +72,6 @@ func TestTreeInit(t *testing.T) {
 
 func TestTreeSimple(t *testing.T) {
 	tree := New()
-	assert.NotNil(t, tree)
 
 	strs := []string{
 		"bacteria",
@@ -100,7 +99,28 @@ func TestTreeSimple(t *testing.T) {
 			assert.Equal(t, []byte(s), []byte(v.([]byte)))
 		}
 	}
+}
 
+func TestTreeUpdate(t *testing.T) {
+	tree := New()
+
+	key := []byte("key")
+
+	ov, updated := tree.Insert(key, "value")
+	assert.Nil(t, ov)
+	assert.False(t, updated)
+
+	v, found := tree.Search(key)
+	assert.True(t, found)
+	assert.Equal(t, "value", v.(string))
+
+	ov, updated = tree.Insert(key, "otherValue")
+	assert.Equal(t, "value", ov.(string))
+	assert.True(t, updated)
+
+	v, found = tree.Search(key)
+	assert.True(t, found)
+	assert.Equal(t, "otherValue", v.(string))
 }
 
 func TestTreeInsertWords(t *testing.T) {
@@ -146,4 +166,58 @@ func TestTreeLongestCommonPrefix(t *testing.T) {
 	l1 = newLeaf([]byte("abcdefg12345678"), "abcdefg12345678").Leaf()
 	l2 = newLeaf([]byte("defg!@#$%^&*"), "defg!@#$%^&*").Leaf()
 	assert.Equal(t, 0, tree.longestCommonPrefix(l1, l2, 0))
+}
+
+func BenchmarkTreeInsertWords(b *testing.B) {
+	b.StopTimer()
+	words := loadTestFile("test/assets/words.txt")
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		tree := New()
+		for _, w := range words {
+			tree.Insert(w, w)
+		}
+	}
+}
+
+func BenchmarkTreeSearchWords(b *testing.B) {
+	b.StopTimer()
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		for _, w := range words {
+			tree.Search(w)
+		}
+	}
+}
+
+func BenchmarkTreeInsertUUIDs(b *testing.B) {
+	b.StopTimer()
+	words := loadTestFile("test/assets/uuid.txt")
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		tree := New()
+		for _, w := range words {
+			tree.Insert(w, w)
+		}
+	}
+}
+
+func BenchmarkTreeSearchUUIDs(b *testing.B) {
+	b.StopTimer()
+	words := loadTestFile("test/assets/uuid.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		for _, w := range words {
+			tree.Search(w)
+		}
+	}
 }

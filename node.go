@@ -7,16 +7,24 @@ import (
 )
 
 type kind int
+type Prefix [MAX_PREFIX_LENGTH]byte
 
 func (k kind) String() string {
 	var node2string = []string{"", "NODE4", "NODE16", "NODE48", "NODE256", "LEAF"}
 	return node2string[k]
 }
 
+func (k Key) charAt(pos int) byte {
+	if pos < 0 || pos >= len(k) {
+		return 0
+	}
+	return k[pos]
+}
+
 type node struct {
 	numChildren int
 	prefixLen   int
-	prefix      [MAX_PREFIX_LENGTH]byte
+	prefix      Prefix
 }
 
 type node4 struct {
@@ -54,11 +62,21 @@ type artNode struct {
 
 var nullNode *artNode = nil
 
-func (n *node) SetKey(key Key, keyLen int) {
-	for i := 0; i < keyLen; i++ {
+func (an *artNode) SetPrefix(key Key, prefixLen int) {
+	n := an.BaseNode()
+	n.prefixLen = prefixLen
+	for i := 0; i < min(MAX_PREFIX_LENGTH, prefixLen); i++ {
 		n.prefix[i] = key[i]
 	}
 }
+
+// newNode.SetKey(key, depth, longestPrefix)
+// newNode4 := newNode.Node4()
+
+// newNode4.prefixLen = longestPrefix
+// if longestPrefix > 0 {
+// 	newNode4.SetKey(key[depth:], min(MAX_PREFIX_LENGTH, longestPrefix))
+// }
 
 func (n *node) CheckPrefix(key Key, depth int) int {
 	idx, limit := 0, min(min(n.prefixLen, MAX_PREFIX_LENGTH), len(key)-depth)
@@ -98,9 +116,12 @@ func (an *artNode) PrefixMismatch(key Key, depth int) (idx int) {
 	return idx
 }
 
-func (an *artNode) Grow(c byte, child *artNode) *artNode {
-	//fmt.Printf("Grow %v %v\n", c, child)
-	return newNodeFrom(an)
+func (an *artNode) Grow() *artNode {
+	return growNode(an)
+}
+
+func (an *artNode) Replace(oldNode *artNode) {
+	*oldNode = *an
 }
 
 // Find the minimum leaf under a artNode
@@ -154,7 +175,6 @@ func (an *artNode) Minimum() *leaf {
 		}
 
 	default:
-		//fmt.Printf("Kind: %+v\n", an)
 		panic("Could find minimum")
 	}
 
@@ -194,18 +214,20 @@ func (an *artNode) Maximum() *leaf {
 			idx--
 		}
 		return n.children[idx].Maximum()
+
+	default:
+		panic("Could find maximum")
 	}
 
-	panic("Could find maximum")
 }
 
 func (an *artNode) Index(c byte) int {
 	switch an.kind {
 	case NODE_4:
 		n := an.Node4()
-		for i := 0; i < n.numChildren; i++ {
-			if n.keys[i] == c {
-				return i
+		for idx := 0; idx < n.numChildren; idx++ {
+			if n.keys[idx] == c {
+				return idx
 			}
 		}
 
@@ -222,9 +244,9 @@ func (an *artNode) Index(c byte) int {
 		// TODO It is currently unclear if golang has intentions of supporting SIMD instructions
 		//      So until then, go-art will opt for Binary Search
 		n := an.Node16()
-		i := sort.Search(int(n.numChildren), func(i int) bool { return n.keys[i] >= c })
-		if i < len(n.keys) && n.keys[i] == c {
-			return i
+		idx := sort.Search(int(n.numChildren), func(i int) bool { return c <= n.keys[i] })
+		if idx < len(n.keys) && n.keys[idx] == c {
+			return idx
 		}
 
 	case NODE_48:
@@ -236,7 +258,7 @@ func (an *artNode) Index(c byte) int {
 		n := an.Node48()
 		idx := int(n.keys[c])
 		if idx > 0 {
-			return int(idx) - 1
+			return idx - 1
 		}
 
 	case NODE_256:
@@ -310,102 +332,79 @@ func (an *artNode) Leaf() *leaf {
 	return (*leaf)(an.ref)
 }
 
-func (an *artNode) AddChild(ref **artNode, c byte, child *artNode) {
-	// fmt.Printf("AddChild, an: %+v c: %v child: %+v\n", an, c, child)
+func (an *artNode) AddChild(c byte, child *artNode) *artNode {
 	switch an.kind {
 	case NODE_4:
-		n4 := an.Node4()
-		if n4.numChildren < NODE_4_MAX {
-			i := 0
-			for ; i < n4.numChildren; i++ {
-				if c < n4.keys[i] {
-					break
-				}
-			}
-
-			// // Shift to make room
-			// memmove(n->keys+idx+1, n->keys+idx, n->n.num_children - idx);
-			// memmove(n->children+idx+1, n->children+idx,
-			// (n->n.num_children - idx)*sizeof(void*));
-
-			limit := n4.numChildren - i
-			// fmt.Printf("format2, %v, %v, %v\n", i, n4.keys, limit)
-			for j := limit; limit > 0 && j > 0; j-- {
-				n4.keys[i+j] = n4.keys[i+j-1]
-				n4.children[i+j] = n4.children[i+j-1]
-			}
-
-			n4.keys[i] = c
-			n4.children[i] = child
-			n4.numChildren++
-			// fmt.Printf("format2, %v, %v, %v\n", i, n4.keys, limit)
-
-			//fmt.Printf("Add N4 %v %+v\n", i, n4)
-
-		} else {
-			// fmt.Printf("Growing... %v\n", DumpNode(an))
-			nn := an.Grow(c, child)
-			// fmt.Printf("Grow... %+v\n", DumpNode(nn))
-			// fmt.Printf("Ref %p\n", *ref)
-			nn.AddChild(ref, c, child)
-			*an = *nn
-			// fmt.Printf("Growed %+v\n", DumpNode(nn))
-			// fmt.Printf("Ref %p\n", *ref)
-		}
+		an.AddChild4(an.Node4(), c, child)
 
 	case NODE_16:
-		n16 := an.Node16()
-		if n16.numChildren < NODE_16_MAX {
-			index := sort.Search(n16.numChildren, func(i int) bool { return c <= n16.keys[byte(i)] })
-			// fmt.Printf("Add N16 %v\n", index)
-
-			for i := n16.numChildren; i > index; i-- {
-				// if n16.keys[i-1] > c {
-				n16.keys[i] = n16.keys[i-1]
-				n16.children[i] = n16.children[i-1]
-				// }
-			}
-
-			// fmt.Printf("Add N16 %v\n", index)
-			n16.keys[index] = c
-			n16.children[index] = child
-			n16.numChildren++
-			// fmt.Printf("Add N16 %v %+v\n", index, n16)
-		} else {
-			// fmt.Printf("Growing... %v\n", an)
-			nn := an.Grow(c, child)
-			// fmt.Printf("Grow... %+v\n", nn)
-			nn.AddChild(ref, c, child)
-			*an = *nn
-			// fmt.Printf("Growed %+v\n", nn)
-		}
+		an.AddChild16(an.Node16(), c, child)
 
 	case NODE_48:
-		n := an.Node48()
-		if n.numChildren < NODE_48_MAX {
-			index := byte(0)
-			for n.children[index] != nil {
-				index++
-			}
-
-			// fmt.Printf("N48: %+v, %v\n", n, index)
-
-			n.keys[c] = index + 1
-			n.children[index] = child
-			n.numChildren++
-		} else {
-			// fmt.Printf("Growing... %v\n", an)
-			nn := an.Grow(c, child)
-			// fmt.Printf("Grow... %+v\n", nn)
-			nn.AddChild(ref, c, child)
-			*an = *nn
-			// fmt.Printf("Growed %+v\n", nn)
-		}
+		an.AddChild48(an.Node48(), c, child)
 
 	case NODE_256:
-		n256 := an.Node256()
-		n256.numChildren++
-		n256.children[c] = child
+		an.AddChild256(an.Node256(), c, child)
 	}
+	return an
+}
 
+func (an *artNode) AddChild4(node *node4, c byte, child *artNode) {
+	if node.numChildren < NODE_4_MAX {
+		i := 0
+		for ; i < node.numChildren; i++ {
+			if c < node.keys[i] {
+				break
+			}
+		}
+
+		limit := node.numChildren - i
+		for j := limit; limit > 0 && j > 0; j-- {
+			node.keys[i+j] = node.keys[i+j-1]
+			node.children[i+j] = node.children[i+j-1]
+		}
+
+		node.keys[i] = c
+		node.children[i] = child
+		node.numChildren++
+
+	} else {
+		an.Grow().AddChild(c, child).Replace(an)
+	}
+}
+
+func (an *artNode) AddChild16(node *node16, c byte, child *artNode) {
+	if node.numChildren < NODE_16_MAX {
+		index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
+		for i := node.numChildren; i > index; i-- {
+			node.keys[i] = node.keys[i-1]
+			node.children[i] = node.children[i-1]
+		}
+
+		node.keys[index] = c
+		node.children[index] = child
+		node.numChildren++
+	} else {
+		an.Grow().AddChild(c, child).Replace(an)
+	}
+}
+
+func (an *artNode) AddChild48(node *node48, c byte, child *artNode) {
+	if node.numChildren < NODE_48_MAX {
+		index := byte(0)
+		for node.children[index] != nil {
+			index++
+		}
+
+		node.keys[c] = index + 1
+		node.children[index] = child
+		node.numChildren++
+	} else {
+		an.Grow().AddChild(c, child).Replace(an)
+	}
+}
+
+func (an *artNode) AddChild256(node *node256, c byte, child *artNode) {
+	node.numChildren++
+	node.children[c] = child
 }
