@@ -95,8 +95,8 @@ func (ts *treeStringer) array(arr []byte) *treeStringer {
 }
 
 func (ts *treeStringer) children(children []*artNode, numChildred int, depth int) {
-	for i := 0; i < numChildred; i++ {
-		ts.baseNode(children[i], depth, i, numChildred)
+	for i := 0; i < len(children); i++ {
+		ts.baseNode(children[i], depth, i, len(children))
 	}
 }
 
@@ -119,7 +119,7 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	//padHeader, pad := ts.generatePads(depth, childNum, childrenTotal)
 	padHeader, pad := ts.generatePadsV2(depth, childNum, childrenTotal)
 	if an == nil {
-		ts.append(padHeader).append("nil")
+		ts.append(padHeader).append("nil").append("\n")
 		return
 	}
 

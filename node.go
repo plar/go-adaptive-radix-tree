@@ -120,8 +120,14 @@ func (an *artNode) Grow() *artNode {
 	return growNode(an)
 }
 
-func (an *artNode) Replace(oldNode *artNode) {
-	*oldNode = *an
+func replaceRef(oldNode **artNode, newNode *artNode) {
+	// factory.releaseNode(*oldNode)
+	*oldNode = newNode
+}
+
+func replaceNode(oldNode *artNode, newNode *artNode) {
+	// factory.releaseNode(oldNode)
+	*oldNode = *newNode
 }
 
 // Find the minimum leaf under a artNode
@@ -332,24 +338,24 @@ func (an *artNode) Leaf() *leaf {
 	return (*leaf)(an.ref)
 }
 
-func (an *artNode) AddChild(c byte, child *artNode) *artNode {
+func (an *artNode) AddChild(c byte, child *artNode) bool {
 	switch an.kind {
 	case NODE_4:
-		an.AddChild4(an.Node4(), c, child)
+		return an.AddChild4(an.Node4(), c, child)
 
 	case NODE_16:
-		an.AddChild16(an.Node16(), c, child)
+		return an.AddChild16(an.Node16(), c, child)
 
 	case NODE_48:
-		an.AddChild48(an.Node48(), c, child)
+		return an.AddChild48(an.Node48(), c, child)
 
 	case NODE_256:
-		an.AddChild256(an.Node256(), c, child)
+		return an.AddChild256(an.Node256(), c, child)
 	}
-	return an
+	return false
 }
 
-func (an *artNode) AddChild4(node *node4, c byte, child *artNode) {
+func (an *artNode) AddChild4(node *node4, c byte, child *artNode) bool {
 	if node.numChildren < NODE_4_MAX {
 		i := 0
 		for ; i < node.numChildren; i++ {
@@ -367,13 +373,16 @@ func (an *artNode) AddChild4(node *node4, c byte, child *artNode) {
 		node.keys[i] = c
 		node.children[i] = child
 		node.numChildren++
-
+		return false
 	} else {
-		an.Grow().AddChild(c, child).Replace(an)
+		newNode := an.Grow()
+		newNode.AddChild(c, child)
+		replaceNode(an, newNode)
+		return true
 	}
 }
 
-func (an *artNode) AddChild16(node *node16, c byte, child *artNode) {
+func (an *artNode) AddChild16(node *node16, c byte, child *artNode) bool {
 	if node.numChildren < NODE_16_MAX {
 		index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
 		for i := node.numChildren; i > index; i-- {
@@ -384,12 +393,16 @@ func (an *artNode) AddChild16(node *node16, c byte, child *artNode) {
 		node.keys[index] = c
 		node.children[index] = child
 		node.numChildren++
+		return false
 	} else {
-		an.Grow().AddChild(c, child).Replace(an)
+		newNode := an.Grow()
+		newNode.AddChild(c, child)
+		replaceNode(an, newNode)
+		return true
 	}
 }
 
-func (an *artNode) AddChild48(node *node48, c byte, child *artNode) {
+func (an *artNode) AddChild48(node *node48, c byte, child *artNode) bool {
 	if node.numChildren < NODE_48_MAX {
 		index := byte(0)
 		for node.children[index] != nil {
@@ -399,12 +412,17 @@ func (an *artNode) AddChild48(node *node48, c byte, child *artNode) {
 		node.keys[c] = index + 1
 		node.children[index] = child
 		node.numChildren++
+		return false
 	} else {
-		an.Grow().AddChild(c, child).Replace(an)
+		newNode := an.Grow()
+		newNode.AddChild(c, child)
+		replaceNode(an, newNode)
+		return true
 	}
 }
 
-func (an *artNode) AddChild256(node *node256, c byte, child *artNode) {
+func (an *artNode) AddChild256(node *node256, c byte, child *artNode) bool {
 	node.numChildren++
 	node.children[c] = child
+	return false
 }

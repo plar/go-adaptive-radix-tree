@@ -56,7 +56,7 @@ func (t *tree) Search(key Key) (Value, bool) {
 func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
 	node := *curNode
 	if node == nil {
-		*curNode = newLeaf(key, value)
+		replaceRef(curNode, factory.newLeaf(key, value))
 		return nil, false
 	}
 
@@ -71,17 +71,17 @@ func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value
 		}
 
 		// new value, split the leaf newNode into a node4
-		newLeaf := newLeaf(key, value)
+		newLeaf := factory.newLeaf(key, value)
 		leaf2 := newLeaf.Leaf()
 		lcp := t.longestCommonPrefix(leaf, leaf2, depth)
 
-		newNode := newNode4()
+		newNode := factory.newNode4()
 		newNode.SetPrefix(key[depth:], lcp)
 		depth += lcp
 
 		newNode.AddChild(leaf.key.charAt(depth), node)
 		newNode.AddChild(leaf2.key.charAt(depth), newLeaf)
-		*curNode = newNode
+		replaceRef(curNode, newNode)
 		return nil, false
 	}
 
@@ -92,7 +92,7 @@ func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value
 			depth += nodeBase.prefixLen
 			goto NEXT_NODE
 		}
-		newNode := newNode4()
+		newNode := factory.newNode4()
 		newNodeBase := newNode.BaseNode()
 		newNodeBase.prefixLen = prefixDiff
 		for j := 0; j < min(MAX_PREFIX_LENGTH, prefixDiff); j++ {
@@ -118,9 +118,8 @@ func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value
 		}
 
 		// Insert the new leaf
-		newNode.AddChild(key.charAt(depth+prefixDiff), newLeaf(key, value))
-		*curNode = newNode
-
+		newNode.AddChild(key.charAt(depth+prefixDiff), factory.newLeaf(key, value))
+		replaceRef(curNode, newNode)
 		return nil, false
 	}
 
@@ -133,7 +132,7 @@ NEXT_NODE:
 	}
 
 	// No Child, artNode goes with us
-	node.AddChild(key.charAt(depth), newLeaf(key, value))
+	node.AddChild(key.charAt(depth), factory.newLeaf(key, value))
 	return nil, false
 }
 

@@ -70,6 +70,27 @@ func TestTreeInit(t *testing.T) {
 	assert.NotNil(t, tree)
 }
 
+func TestPoolFactory(t *testing.T) {
+	factory := newPoolObjFactory()
+	n4 := factory.newNode48()
+	assert.NotNil(t, n4)
+	factory.releaseNode(n4)
+
+	n4v2 := factory.newNode48()
+	assert.True(t, n4 == n4v2)
+
+	n4v3 := factory.newNode48()
+	assert.NotEqual(t, n4v2, n4v3)
+}
+
+func TestObjFactory(t *testing.T) {
+	factory := newObjFactory()
+	n4 := factory.newNode48()
+	assert.NotNil(t, n4)
+	n4v2 := factory.newNode48()
+	assert.True(t, n4 != n4v2)
+}
+
 func TestTreeSimple(t *testing.T) {
 	tree := New()
 
@@ -86,10 +107,36 @@ func TestTreeSimple(t *testing.T) {
 		"bacbacteria",
 		"BacBacteriaceae",
 		"bacbacteriaceous",
+		"b1cbacteria",
+		"Ba2Bacteriaceae",
+		"bac3acteriaceous",
+		"bacb4cteria",
+		"BacBa5teriaceae",
+		"bacbac6eriaceous",
+		"bacbact7ria",
+		"BacBacte8iaceae",
+		"bacbacter9aceous",
+		"bacbacteri0",
+		"BacBacteria1eae",
+		"bacbacteriac1ous",
+		"1b1cbacteria",
+		"2Ba2Bacteriaceae",
+		"3bac3acteriaceous",
+		"4bacb4cteria",
+		"5BacBa5teriaceae",
+		"6bacbac6eriaceous",
+		"7bacbact7ria",
+		"8BacBacte8iaceae",
+		"9bacbacter9aceous",
+		"1bacbacteri0",
+		"11BacBacteria1eae",
+		"111bacbacteriac1ous",
 	}
 
 	for _, s := range strs {
 		tree.Insert([]byte(s), []byte(s))
+		// fmt.Println("=========================================== ", s)
+		// fmt.Println(tree)
 	}
 
 	for _, s := range strs {
@@ -137,6 +184,7 @@ func TestTreeInsertWords(t *testing.T) {
 		assert.Equal(t, w, v)
 		assert.True(t, found)
 	}
+	//fmt.Println(tree)
 }
 
 func TestTreeInsertUUIDs(t *testing.T) {
@@ -158,13 +206,13 @@ func TestTreeInsertUUIDs(t *testing.T) {
 func TestTreeLongestCommonPrefix(t *testing.T) {
 	tree := &tree{}
 
-	l1 := newLeaf([]byte("abcdefg12345678"), "abcdefg12345678").Leaf()
-	l2 := newLeaf([]byte("abcdefg!@#$%^&*"), "abcdefg!@#$%^&*").Leaf()
+	l1 := factory.newLeaf([]byte("abcdefg12345678"), "abcdefg12345678").Leaf()
+	l2 := factory.newLeaf([]byte("abcdefg!@#$%^&*"), "abcdefg!@#$%^&*").Leaf()
 	assert.Equal(t, 7, tree.longestCommonPrefix(l1, l2, 0))
 	assert.Equal(t, 3, tree.longestCommonPrefix(l1, l2, 4))
 
-	l1 = newLeaf([]byte("abcdefg12345678"), "abcdefg12345678").Leaf()
-	l2 = newLeaf([]byte("defg!@#$%^&*"), "defg!@#$%^&*").Leaf()
+	l1 = factory.newLeaf([]byte("abcdefg12345678"), "abcdefg12345678").Leaf()
+	l2 = factory.newLeaf([]byte("defg!@#$%^&*"), "defg!@#$%^&*").Leaf()
 	assert.Equal(t, 0, tree.longestCommonPrefix(l1, l2, 0))
 }
 
@@ -199,11 +247,21 @@ func BenchmarkTreeInsertUUIDs(b *testing.B) {
 	b.StopTimer()
 	words := loadTestFile("test/assets/uuid.txt")
 	b.StartTimer()
+
+	// var m runtime.MemStats
+	// var makes int
 	for n := 0; n < b.N; n++ {
 		tree := New()
 		for _, w := range words {
 			tree.Insert(w, w)
 		}
+
+		// runtime.ReadMemStats(&m)
+		// fmt.Printf("\n====== MemStats: %+v\n", m)
+		// fmt.Printf("HeapSys: %d, HeapAlloc: %d, HeapIdle: %d, HeapReleased: %d, HeapObjs: %d, # %d\n", m.HeapSys, m.HeapAlloc,
+		// 	m.HeapIdle, m.HeapReleased, m.HeapObjects, makes)
+
+		// makes++
 	}
 }
 
