@@ -62,21 +62,59 @@ type artNode struct {
 
 var nullNode *artNode = nil
 
-func (an *artNode) SetPrefix(key Key, prefixLen int) {
+func (n *artNode) shrinkThreshold() int {
+	switch n.kind {
+	case NODE_4:
+		return NODE_4_SHRINK
+	case NODE_16:
+		return NODE_16_SHRINK
+	case NODE_48:
+		return NODE_48_SHRINK
+	case NODE_256:
+		return NODE_256_SHRINK
+	}
+
+	return 0
+}
+
+func (n *artNode) minChildren() int {
+	switch n.kind {
+	case NODE_4:
+		return NODE_4_MIN
+	case NODE_16:
+		return NODE_16_MIN
+	case NODE_48:
+		return NODE_48_MIN
+	case NODE_256:
+		return NODE_256_MIN
+	}
+
+	return 0
+}
+
+func (n *artNode) maxChildren() int {
+	switch n.kind {
+	case NODE_4:
+		return NODE_4_MAX
+	case NODE_16:
+		return NODE_16_MAX
+	case NODE_48:
+		return NODE_48_MAX
+	case NODE_256:
+		return NODE_256_MAX
+	}
+
+	return 0
+}
+
+func (an *artNode) SetPrefix(key Key, prefixLen int) *artNode {
 	n := an.BaseNode()
 	n.prefixLen = prefixLen
 	for i := 0; i < min(MAX_PREFIX_LENGTH, prefixLen); i++ {
 		n.prefix[i] = key[i]
 	}
+	return an
 }
-
-// newNode.SetKey(key, depth, longestPrefix)
-// newNode4 := newNode.Node4()
-
-// newNode4.prefixLen = longestPrefix
-// if longestPrefix > 0 {
-// 	newNode4.SetKey(key[depth:], min(MAX_PREFIX_LENGTH, longestPrefix))
-// }
 
 func (n *node) CheckPrefix(key Key, depth int) int {
 	idx, limit := 0, min(min(n.prefixLen, MAX_PREFIX_LENGTH), len(key)-depth)
@@ -88,36 +126,32 @@ func (n *node) CheckPrefix(key Key, depth int) int {
 	return idx
 }
 
-func (l *leaf) Match(key Key, depth int) bool {
+func (l *leaf) Match(key Key) bool {
 	return l != nil && len(l.key) == len(key) && bytes.Compare(l.key, key) == 0
 }
 
 func (an *artNode) PrefixMismatch(key Key, depth int) (idx int) {
-	idx = 0
-
 	n := an.BaseNode()
-	limit := min(min(MAX_PREFIX_LENGTH, n.prefixLen), len(key)-depth)
+	idx, limit := 0, min(min(MAX_PREFIX_LENGTH, n.prefixLen), len(key)-depth)
 	for ; idx < limit; idx++ {
 		if n.prefix[idx] != key[idx+depth] {
 			return idx
 		}
 	}
 
-	if n.prefixLen > MAX_PREFIX_LENGTH {
-		leaf := an.Minimum()
-		limit = min(len(leaf.key), len(key)) - depth
-		for ; idx < limit; idx++ {
-			if leaf.key[idx+depth] != key[idx+depth] {
-				return idx
-			}
+	if n.prefixLen <= MAX_PREFIX_LENGTH {
+		return idx
+	}
+
+	leaf := an.Minimum()
+	limit = min(len(leaf.key), len(key)) - depth
+	for ; idx < limit; idx++ {
+		if leaf.key[idx+depth] != key[idx+depth] {
+			return idx
 		}
 	}
 
 	return idx
-}
-
-func (an *artNode) Grow() *artNode {
-	return growNode(an)
 }
 
 func replaceRef(oldNode **artNode, newNode *artNode) {
@@ -341,21 +375,54 @@ func (an *artNode) Leaf() *leaf {
 func (an *artNode) AddChild(c byte, child *artNode) bool {
 	switch an.kind {
 	case NODE_4:
-		return an.AddChild4(an.Node4(), c, child)
+		return an.addChild4(an.Node4(), c, child)
 
 	case NODE_16:
-		return an.AddChild16(an.Node16(), c, child)
+		return an.addChild16(an.Node16(), c, child)
 
 	case NODE_48:
-		return an.AddChild48(an.Node48(), c, child)
+		return an.addChild48(an.Node48(), c, child)
 
 	case NODE_256:
-		return an.AddChild256(an.Node256(), c, child)
+		return an.addChild256(an.Node256(), c, child)
 	}
 	return false
 }
 
-func (an *artNode) AddChild4(node *node4, c byte, child *artNode) bool {
+func (an *artNode) DeleteChild(c byte) bool {
+	numChildren := -1
+	switch an.kind {
+	case NODE_4:
+		node := an.Node4()
+		an.deleteChild4(node, c)
+		numChildren = node.numChildren
+
+	case NODE_16:
+		node := an.Node16()
+		an.deleteChild16(node, c)
+		numChildren = node.numChildren
+
+	case NODE_48:
+		node := an.Node48()
+		an.deleteChild48(node, c)
+		numChildren = node.numChildren
+
+	case NODE_256:
+		node := an.Node256()
+		an.deleteChild256(node, c)
+		numChildren = node.numChildren
+	}
+
+	if numChildren != -1 && numChildren < an.shrinkThreshold() {
+		newNode := an.shrink()
+		replaceNode(an, newNode)
+		return true
+	}
+	return false
+
+}
+
+func (an *artNode) addChild4(node *node4, c byte, child *artNode) bool {
 	if node.numChildren < NODE_4_MAX {
 		i := 0
 		for ; i < node.numChildren; i++ {
@@ -375,14 +442,14 @@ func (an *artNode) AddChild4(node *node4, c byte, child *artNode) bool {
 		node.numChildren++
 		return false
 	} else {
-		newNode := an.Grow()
+		newNode := an.grow()
 		newNode.AddChild(c, child)
 		replaceNode(an, newNode)
 		return true
 	}
 }
 
-func (an *artNode) AddChild16(node *node16, c byte, child *artNode) bool {
+func (an *artNode) addChild16(node *node16, c byte, child *artNode) bool {
 	if node.numChildren < NODE_16_MAX {
 		index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
 		for i := node.numChildren; i > index; i-- {
@@ -395,14 +462,14 @@ func (an *artNode) AddChild16(node *node16, c byte, child *artNode) bool {
 		node.numChildren++
 		return false
 	} else {
-		newNode := an.Grow()
+		newNode := an.grow()
 		newNode.AddChild(c, child)
 		replaceNode(an, newNode)
 		return true
 	}
 }
 
-func (an *artNode) AddChild48(node *node48, c byte, child *artNode) bool {
+func (an *artNode) addChild48(node *node48, c byte, child *artNode) bool {
 	if node.numChildren < NODE_48_MAX {
 		index := byte(0)
 		for node.children[index] != nil {
@@ -414,15 +481,237 @@ func (an *artNode) AddChild48(node *node48, c byte, child *artNode) bool {
 		node.numChildren++
 		return false
 	} else {
-		newNode := an.Grow()
+		newNode := an.grow()
 		newNode.AddChild(c, child)
 		replaceNode(an, newNode)
 		return true
 	}
 }
 
-func (an *artNode) AddChild256(node *node256, c byte, child *artNode) bool {
+func (an *artNode) addChild256(node *node256, c byte, child *artNode) bool {
 	node.numChildren++
 	node.children[c] = child
 	return false
+}
+
+func (an *artNode) deleteChild4(node *node4, c byte) {
+	idx := an.Index(c)
+	if idx == -1 {
+		return
+	}
+
+	node.numChildren--
+	node.keys[idx] = 0
+	node.children[idx] = nil
+	for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
+		node.keys[i] = node.keys[i+1]
+		node.children[i] = node.children[i+1]
+	}
+
+	node.keys[node.numChildren] = 0
+	node.children[node.numChildren] = nil
+}
+
+func (an *artNode) deleteChild16(node *node16, c byte) {
+	idx := an.Index(c)
+	if idx == -1 {
+		return
+	}
+
+	node.numChildren--
+	node.keys[idx] = 0
+	node.children[idx] = nil
+	for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
+		node.keys[i] = node.keys[i+1]
+		node.children[i] = node.children[i+1]
+	}
+
+	node.keys[node.numChildren] = 0
+	node.children[node.numChildren] = nil
+}
+
+func (an *artNode) deleteChild48(node *node48, c byte) {
+	idx := an.Index(c)
+	if idx == -1 {
+		return
+	}
+
+	child := node.children[idx]
+	if child == nil {
+		return
+	}
+
+	node.children[idx] = nil
+	node.keys[idx] = 0
+	node.numChildren--
+}
+
+func (an *artNode) deleteChild256(node *node256, c byte) {
+	idx := an.Index(c)
+	child := node.children[idx]
+	if child == nil {
+		return
+	}
+
+	node.children[idx] = nil
+	node.numChildren--
+}
+
+func (an *artNode) copyMeta(src *artNode) *artNode {
+	if an == nil || src == nil {
+		return an
+	}
+
+	d := an.BaseNode()
+	s := src.BaseNode()
+
+	d.numChildren = s.numChildren
+	d.prefixLen = s.prefixLen
+
+	for i, limit := 0, min(MAX_PREFIX_LENGTH, s.prefixLen); i < limit; i++ {
+		d.prefix[i] = s.prefix[i]
+	}
+
+	return an
+}
+
+func (an *artNode) grow() *artNode {
+	switch an.kind {
+	case NODE_4:
+		n := factory.newNode16().copyMeta(an)
+
+		d := n.Node16()
+		s := an.Node4()
+
+		for i := 0; i < s.numChildren; i++ {
+			d.keys[i] = s.keys[i]
+			d.children[i] = s.children[i]
+		}
+		return n
+
+	case NODE_16:
+		n := factory.newNode48().copyMeta(an)
+
+		d := n.Node48()
+		s := an.Node16()
+
+		for i := 0; i < s.numChildren; i++ {
+			d.keys[s.keys[i]] = byte(i + 1)
+			d.children[i] = s.children[i]
+		}
+		return n
+
+	case NODE_48:
+		n := factory.newNode256().copyMeta(an)
+
+		d := n.Node256()
+		s := an.Node48()
+
+		for i := 0; i < 256; i++ {
+			if s.keys[i] > 0 {
+				d.children[i] = s.children[s.keys[i]-1]
+			}
+		}
+		return n
+
+	default:
+		panic("grow")
+	}
+	return nil
+}
+
+func (an *artNode) shrink() *artNode {
+	switch an.kind {
+	case NODE_4:
+		n := an.Node4()
+		o := n.children[0]
+		if o.kind == NODE_LEAF {
+			return o
+		}
+
+		curPrefixLen := n.prefixLen
+		if curPrefixLen < MAX_PREFIX_LENGTH {
+			n.prefix[curPrefixLen] = n.keys[0]
+			curPrefixLen++
+		}
+
+		ob := o.BaseNode()
+		if curPrefixLen < MAX_PREFIX_LENGTH {
+			childPrefixLen := min(ob.prefixLen, MAX_PREFIX_LENGTH-curPrefixLen)
+			for i := 0; i < childPrefixLen; i++ {
+				n.prefix[curPrefixLen+i] = ob.prefix[i]
+			}
+			curPrefixLen += childPrefixLen
+		}
+
+		for i := 0; i < min(curPrefixLen, MAX_PREFIX_LENGTH); i++ {
+			ob.prefix[i] = n.prefix[i]
+		}
+		ob.prefixLen += n.prefixLen + 1
+		return o
+
+	case NODE_16:
+		n := an.Node16()
+
+		o := factory.newNode4().copyMeta(an)
+		ob := o.BaseNode()
+		ob.numChildren = 0
+
+		o4 := o.Node4()
+		for i := 0; i < len(o4.keys); i++ {
+			o4.keys[i] = n.keys[i]
+			o4.children[i] = n.children[i]
+			o4.numChildren++
+		}
+
+		return o
+
+		return nil
+	case NODE_48:
+		n := an.Node48()
+
+		o := factory.newNode16().copyMeta(an)
+		ob := o.BaseNode()
+		ob.numChildren = 0
+
+		o16 := o.Node16()
+		for i := 0; i < len(n.keys); i++ {
+			idx := n.keys[byte(i)]
+			if idx <= 0 {
+				continue
+			}
+
+			child := n.children[idx-1]
+			if child != nil {
+				o16.children[ob.numChildren] = child
+				o16.keys[ob.numChildren] = byte(i)
+				ob.numChildren++
+			}
+		}
+
+		return o
+
+	case NODE_256:
+		n := an.Node256()
+
+		o := factory.newNode48().copyMeta(an)
+		ob := o.BaseNode()
+		ob.numChildren = 0
+
+		o48 := o.Node48()
+		for i := 0; i < len(n.children); i++ {
+			child := n.children[byte(i)]
+			if child != nil {
+				o48.children[ob.numChildren] = child
+				o48.keys[byte(i)] = byte(ob.numChildren + 1)
+				ob.numChildren++
+			}
+		}
+
+		return o
+
+	default:
+		panic("shrink")
+	}
+	return nil
 }

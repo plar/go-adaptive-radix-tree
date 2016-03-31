@@ -2,11 +2,11 @@ package art
 
 type tree struct {
 	root *artNode
-	size uint64
+	size int
 }
 
 func (t *tree) Insert(key Key, value Value) (Value, bool) {
-	oldValue, updated := t.insert(&t.root, key, value, 0)
+	oldValue, updated := t.recursiveInsert(&t.root, key, value, 0)
 	if !updated {
 		t.size++
 	}
@@ -14,6 +14,12 @@ func (t *tree) Insert(key Key, value Value) (Value, bool) {
 }
 
 func (t *tree) Delete(key Key) (Value, bool) {
+	value, deleted := t.recursiveDelete(&t.root, key, 0)
+	if deleted {
+		t.size--
+		return value, true
+	}
+
 	return nil, false
 }
 
@@ -26,7 +32,7 @@ func (t *tree) Search(key Key) (Value, bool) {
 	for node != nil {
 		if node.kind == NODE_LEAF {
 			leaf := node.Leaf()
-			if leaf.Match(key, depth) {
+			if leaf.Match(key) {
 				return leaf.value, true
 			}
 			return nil, false
@@ -53,7 +59,31 @@ func (t *tree) Search(key Key) (Value, bool) {
 	return nil, false
 }
 
-func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
+func (t *tree) Minimum() (value Value, found bool) {
+	if t == nil || t.root == nil {
+		return nil, false
+	}
+
+	leaf := t.root.Minimum()
+	if leaf != nil {
+		return leaf.value, true
+	}
+	return nil, false
+}
+
+func (t *tree) Maximum() (value Value, found bool) {
+	if t == nil || t.root == nil {
+		return nil, false
+	}
+
+	leaf := t.root.Maximum()
+	if leaf != nil {
+		return leaf.value, true
+	}
+	return nil, false
+}
+
+func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
 	node := *curNode
 	if node == nil {
 		replaceRef(curNode, factory.newLeaf(key, value))
@@ -64,7 +94,7 @@ func (t *tree) insert(curNode **artNode, key Key, value Value, depth int) (Value
 		leaf := node.Leaf()
 
 		// update exists value
-		if leaf.Match(key, depth) {
+		if leaf.Match(key) {
 			oldValue := leaf.value
 			leaf.value = value
 			return oldValue, true
@@ -128,7 +158,7 @@ NEXT_NODE:
 	// Find a child to recursive to
 	next := node.FindChild(key.charAt(depth))
 	if *next != nil {
-		return t.insert(next, key, value, depth+1)
+		return t.recursiveInsert(next, key, value, depth+1)
 	}
 
 	// No Child, artNode goes with us
@@ -136,12 +166,56 @@ NEXT_NODE:
 	return nil, false
 }
 
-func (t *tree) delete(n *artNode, ref **artNode, key Key, depth int) (Value, bool) {
-	if n == nil || key == nil {
+func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bool) {
+	if t == nil || *curNode == nil || len(key) == 0 {
 		return nil, false
 	}
 
-	return nil, false
+	node := *curNode
+
+	if node.kind == NODE_LEAF {
+		leaf := node.Leaf()
+		if leaf.Match(key) {
+			replaceRef(curNode, nil)
+
+			return leaf.value, true
+		}
+
+		return nil, false
+	}
+
+	nodeBase := node.BaseNode()
+	if nodeBase.prefixLen > 0 {
+
+		prefixLen := nodeBase.CheckPrefix(key, depth)
+		if prefixLen != min(MAX_PREFIX_LENGTH, nodeBase.prefixLen) {
+			return nil, false
+		}
+
+		depth += nodeBase.prefixLen
+	}
+
+	// Find a child to recursive to
+	next := node.FindChild(key.charAt(depth))
+	// fmt.Printf("next %v\n", *next)
+	if *next == nil {
+		return nil, false
+	}
+
+	if (*next).kind == NODE_LEAF {
+		// fmt.Printf("next leaf %v\n", *next)
+		leaf := (*next).Leaf()
+		if leaf.Match(key) {
+			// fmt.Printf("next leaf match %v\n", DumpNode(*next))
+			node.DeleteChild(key.charAt(depth))
+			// fmt.Printf("next leaf match %v\n", DumpNode(*next))
+			return leaf.value, true
+		}
+		// fmt.Println("next leaf WTF %v\n", next)
+		return nil, false
+	} else {
+		return t.recursiveDelete(next, key, depth+1)
+	}
 }
 
 func (t *tree) longestCommonPrefix(l1 *leaf, l2 *leaf, depth int) int {
