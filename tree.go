@@ -83,6 +83,31 @@ func (t *tree) Maximum() (value Value, found bool) {
 	return nil, false
 }
 
+func (t *tree) Size() int {
+	if t == nil || t.root == nil {
+		return 0
+	}
+
+	return t.size
+}
+
+func (t *tree) Walk(callback Callback) {
+	if t == nil || t.root == nil {
+		return
+	}
+
+	t.walker(t.root, callback)
+}
+
+func (t *tree) walker(current *artNode, callback Callback) {
+	if current == nul {
+		return
+	}
+
+	callback(current)
+
+}
+
 func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
 	node := *curNode
 	if node == nil {
@@ -195,27 +220,22 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 		depth += nodeBase.prefixLen
 	}
 
-	// Find a child to recursive to
 	next := node.FindChild(key.charAt(depth))
-	// fmt.Printf("next %v\n", *next)
 	if *next == nil {
 		return nil, false
 	}
 
 	if (*next).kind == NODE_LEAF {
-		// fmt.Printf("next leaf %v\n", *next)
 		leaf := (*next).Leaf()
 		if leaf.Match(key) {
-			// fmt.Printf("next leaf match %v\n", DumpNode(*next))
 			node.DeleteChild(key.charAt(depth))
-			// fmt.Printf("next leaf match %v\n", DumpNode(*next))
 			return leaf.value, true
 		}
-		// fmt.Println("next leaf WTF %v\n", next)
 		return nil, false
-	} else {
-		return t.recursiveDelete(next, key, depth+1)
+
 	}
+
+	return t.recursiveDelete(next, key, depth+1)
 }
 
 func (t *tree) longestCommonPrefix(l1 *leaf, l2 *leaf, depth int) int {
