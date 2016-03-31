@@ -1,14 +1,5 @@
 package art
 
-// node types
-const (
-	NODE_4    = kind(1)
-	NODE_16   = kind(2)
-	NODE_48   = kind(3)
-	NODE_256  = kind(4)
-	NODE_LEAF = kind(5)
-)
-
 // node constraits
 const (
 	NODE_4_SHRINK = 2

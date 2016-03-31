@@ -49,7 +49,7 @@ func newObjFactory() nodeFactory {
 	return &objFactory{}
 }
 
-func initArtNode(an *artNode, kind kind, ref unsafe.Pointer) {
+func initArtNode(an *artNode, kind Kind, ref unsafe.Pointer) {
 	an.kind = kind
 	an.ref = ref
 

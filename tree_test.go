@@ -81,7 +81,7 @@ func TestTreeUpdate(t *testing.T) {
 	assert.Nil(t, ov)
 	assert.False(t, updated)
 	assert.Equal(t, 1, tree.size)
-	assert.Equal(t, kind(NODE_LEAF), tree.root.kind)
+	assert.Equal(t, Kind(NODE_LEAF), tree.root.kind)
 
 	v, found := tree.Search(key)
 	assert.True(t, found)
@@ -130,7 +130,7 @@ func TestTreeInsert3AndSearchWords(t *testing.T) {
 func TestTreeInsertAndGrowToBiggerNode(t *testing.T) {
 	var testData = []struct {
 		totalNodes byte
-		expected   kind
+		expected   Kind
 	}{
 		{5, NODE_16},
 		{17, NODE_48},
@@ -185,17 +185,15 @@ func TestTreeInsertUUIDsAndMinMax(t *testing.T) {
 	assert.Equal(t, []byte("ffffcb46-a92e-4822-82af-a7190f9c1ec5"), maximum.value.([]byte))
 }
 
-type testData struct {
-	message string
-	insert  interface{}
-	delete  interface{}
-	size    int
-	root    interface{}
-}
-
-type treeTestCustom func(data *testData, tree *tree)
-
 func TestTreeInsertAndDeleteOperations(t *testing.T) {
+	type testData struct {
+		message string
+		insert  interface{}
+		delete  interface{}
+		size    int
+		root    interface{}
+	}
+	type treeTestCustom func(data *testData, tree *tree)
 
 	var data = []testData{
 		{
@@ -344,7 +342,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 
 		if ds.root == nil {
 			assert.Nil(t, tree.root, ds.message)
-		} else if k, ok := ds.root.(kind); ok {
+		} else if k, ok := ds.root.(Kind); ok {
 			assert.Equal(t, k, tree.root.kind, ds.message)
 		} else if an, ok := ds.root.(*artNode); ok {
 			assert.Equal(t, an, tree.root, ds.message)
@@ -402,6 +400,124 @@ func TestInsertTwoAndDeleteTwo(t *testing.T) {
 	v, deleted = tree.Delete([]byte("1"))
 	assert.True(t, deleted)
 	assert.Equal(t, []byte{1}, v.([]byte))
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
+func TestTreeTraversalPreordered(t *testing.T) {
+	tree := newTree()
+
+	tree.Insert([]byte("1"), 1)
+	tree.Insert([]byte("2"), 2)
+
+	traversal := []Node{}
+	tree.ForEach(func(node Node) {
+		traversal = append(traversal, node)
+	})
+
+	assert.Equal(t, 2, tree.size)
+	assert.Equal(t, traversal[0].(*artNode), tree.root)
+	assert.Nil(t, traversal[0].Key())
+	assert.Nil(t, traversal[0].Value())
+	assert.NotEqual(t, NODE_LEAF, traversal[0].Kind())
+
+	assert.Equal(t, traversal[1].Key(), Key("1"))
+	assert.Equal(t, traversal[1].Value().(int), 1)
+	assert.Equal(t, NODE_LEAF, traversal[1].Kind())
+
+	assert.Equal(t, traversal[2].Key(), Key("2"))
+	assert.Equal(t, traversal[2].Value().(int), 2)
+	assert.Equal(t, NODE_LEAF, traversal[2].Kind())
+}
+
+func TestTreeTraversalNode48(t *testing.T) {
+	tree := newTree()
+
+	for i := 48; i > 0; i-- {
+		tree.Insert([]byte{byte(i)}, i)
+	}
+
+	traversal := []Node{}
+	tree.ForEach(func(node Node) {
+		traversal = append(traversal, node)
+	})
+
+	// Order should be Node48, then the rest of the keys in sorted order
+	assert.Equal(t, 48, tree.size)
+	assert.Equal(t, traversal[0].(*artNode), tree.root)
+	assert.Equal(t, NODE_48, traversal[0].Kind())
+
+	for i := 1; i < 48; i++ {
+		assert.Equal(t, traversal[i].Key(), Key([]byte{byte(i)}))
+		assert.Equal(t, NODE_LEAF, traversal[i].Kind())
+	}
+}
+
+func TestTreeTraversalWordsStats(t *testing.T) {
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+
+	type treeStats struct {
+		leafCount    int
+		node4Count   int
+		node16Count  int
+		node48Count  int
+		node256Count int
+	}
+
+	stats := treeStats{}
+
+	tree.ForEach(func(node Node) {
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	})
+
+	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+}
+
+func TestTreeInsertAndDeleteAllWords(t *testing.T) {
+	words := loadTestFile("test/assets/words.txt")
+	tree := newTree()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+
+	for _, w := range words {
+		v, deleted := tree.Delete(w)
+		assert.True(t, deleted)
+		assert.Equal(t, w, v.([]byte))
+	}
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
+func TestTreeInsertAndDeleteAllUUIDs(t *testing.T) {
+	uuids := loadTestFile("test/assets/uuid.txt")
+	tree := newTree()
+	for _, w := range uuids {
+		tree.Insert(w, w)
+	}
+
+	for _, w := range uuids {
+		v, deleted := tree.Delete(w)
+		assert.True(t, deleted)
+		assert.Equal(t, w, v.([]byte))
+	}
 
 	assert.Equal(t, 0, tree.size)
 	assert.Nil(t, tree.root)

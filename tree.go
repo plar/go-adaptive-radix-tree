@@ -91,7 +91,7 @@ func (t *tree) Size() int {
 	return t.size
 }
 
-func (t *tree) Walk(callback Callback) {
+func (t *tree) ForEach(callback Callback) {
 	if t == nil || t.root == nil {
 		return
 	}
@@ -100,12 +100,53 @@ func (t *tree) Walk(callback Callback) {
 }
 
 func (t *tree) walker(current *artNode, callback Callback) {
-	if current == nul {
+	if current == nil {
 		return
 	}
 
 	callback(current)
 
+	switch current.kind {
+	case NODE_4:
+		node := current.Node4()
+		for i, limit := 0, len(node.children); i < limit; i++ {
+			child := node.children[i]
+			if child != nil {
+				t.walker(child, callback)
+			}
+		}
+
+	case NODE_16:
+		node := current.Node16()
+		for i, limit := 0, len(node.children); i < limit; i++ {
+			child := node.children[i]
+			if child != nil {
+				t.walker(child, callback)
+			}
+		}
+
+	case NODE_48:
+		node := current.Node48()
+		for i, limit := 0, len(node.keys); i < limit; i++ {
+			idx := node.keys[byte(i)]
+			if idx <= 0 {
+				continue
+			}
+			child := node.children[idx-1]
+			if child != nil {
+				t.walker(child, callback)
+			}
+		}
+
+	case NODE_256:
+		node := current.Node256()
+		for i, limit := 0, len(node.children); i < limit; i++ {
+			child := node.children[i]
+			if child != nil {
+				t.walker(child, callback)
+			}
+		}
+	}
 }
 
 func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {

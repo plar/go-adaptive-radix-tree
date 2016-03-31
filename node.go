@@ -6,10 +6,9 @@ import (
 	"unsafe"
 )
 
-type kind int
 type Prefix [MAX_PREFIX_LENGTH]byte
 
-func (k kind) String() string {
+func (k Kind) String() string {
 	var node2string = []string{"", "NODE4", "NODE16", "NODE48", "NODE256", "LEAF"}
 	return node2string[k]
 }
@@ -56,14 +55,32 @@ type leaf struct {
 }
 
 type artNode struct {
-	kind kind
+	kind Kind
 	ref  unsafe.Pointer
 }
 
 var nullNode *artNode = nil
 
-func (n *artNode) shrinkThreshold() int {
-	switch n.kind {
+func (an *artNode) Kind() Kind {
+	return an.kind
+}
+
+func (an *artNode) Key() Key {
+	if an != nil && an.kind == NODE_LEAF {
+		return an.Leaf().key
+	}
+	return nil
+}
+
+func (an *artNode) Value() Value {
+	if an != nil && an.kind == NODE_LEAF {
+		return an.Leaf().value
+	}
+	return nil
+}
+
+func (an *artNode) shrinkThreshold() int {
+	switch an.kind {
 	case NODE_4:
 		return NODE_4_SHRINK
 	case NODE_16:
@@ -77,8 +94,8 @@ func (n *artNode) shrinkThreshold() int {
 	return 0
 }
 
-func (n *artNode) minChildren() int {
-	switch n.kind {
+func (an *artNode) minChildren() int {
+	switch an.kind {
 	case NODE_4:
 		return NODE_4_MIN
 	case NODE_16:
@@ -92,8 +109,8 @@ func (n *artNode) minChildren() int {
 	return 0
 }
 
-func (n *artNode) maxChildren() int {
-	switch n.kind {
+func (an *artNode) maxChildren() int {
+	switch an.kind {
 	case NODE_4:
 		return NODE_4_MAX
 	case NODE_16:

@@ -153,7 +153,7 @@ func TestNode16AddChild16PreserveSorted(t *testing.T) {
 // Art Nodes of all types should grow to the next biggest size in sequence
 func TestGrow(t *testing.T) {
 	nodes := []*artNode{factory.newNode4(), factory.newNode16(), factory.newNode48()}
-	expected := []kind{NODE_16, NODE_48, NODE_256}
+	expected := []Kind{NODE_16, NODE_48, NODE_256}
 
 	for i, node := range nodes {
 		newNode := node.grow()
@@ -164,7 +164,7 @@ func TestGrow(t *testing.T) {
 // Art Nodes of all types should next smallest size in sequence
 func TestShrink(t *testing.T) {
 	nodes := []*artNode{factory.newNode256(), factory.newNode48(), factory.newNode16(), factory.newNode4()}
-	expected := []kind{NODE_48, NODE_16, NODE_4, NODE_LEAF}
+	expected := []Kind{NODE_48, NODE_16, NODE_4, NODE_LEAF}
 
 	for i, node := range nodes {
 
