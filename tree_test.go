@@ -10,6 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type treeStats struct {
+	leafCount    int
+	node4Count   int
+	node16Count  int
+	node48Count  int
+	node256Count int
+}
+
 var words [][]byte
 
 func loadTestFile(path string) [][]byte {
@@ -412,8 +420,9 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	tree.Insert([]byte("2"), 2)
 
 	traversal := []Node{}
-	tree.ForEach(func(node Node) {
+	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
+		return true
 	})
 
 	assert.Equal(t, 2, tree.size)
@@ -439,8 +448,9 @@ func TestTreeTraversalNode48(t *testing.T) {
 	}
 
 	traversal := []Node{}
-	tree.ForEach(func(node Node) {
+	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
+		return true
 	})
 
 	// Order should be Node48, then the rest of the keys in sorted order
@@ -461,17 +471,8 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
-	type treeStats struct {
-		leafCount    int
-		node4Count   int
-		node16Count  int
-		node48Count  int
-		node256Count int
-	}
-
 	stats := treeStats{}
-
-	tree.ForEach(func(node Node) {
+	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
 		case NODE_4:
 			stats.node4Count++
@@ -484,7 +485,90 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 		case NODE_LEAF:
 			stats.leafCount++
 		}
+		return true
 	})
+
+	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+}
+
+func TestTreeIterator(t *testing.T) {
+	tree := newTree()
+	tree.Insert([]byte("2"), []byte{2})
+	tree.Insert([]byte("1"), []byte{1})
+
+	it := tree.Iterator()
+	assert.NotNil(t, it)
+	assert.True(t, it.HasNext())
+	n4, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, NODE_4, n4.Kind())
+
+	assert.True(t, it.HasNext())
+	v1, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, v1.Value().([]byte), []byte{1})
+
+	assert.True(t, it.HasNext())
+	v2, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, v2.Value().([]byte), []byte{2})
+
+	assert.False(t, it.HasNext())
+	bad, err := it.Next()
+	assert.Nil(t, bad)
+	assert.Equal(t, "There are no more nodes in the tree", err.Error())
+
+}
+
+func TestTreeIteratorConcurrentModification(t *testing.T) {
+	tree := newTree()
+	tree.Insert([]byte("2"), []byte{2})
+	tree.Insert([]byte("1"), []byte{1})
+
+	it1 := tree.Iterator()
+	assert.NotNil(t, it1)
+	assert.True(t, it1.HasNext())
+
+	// simulate concurrent modification
+	tree.Insert([]byte("3"), []byte{3})
+	bad, err := it1.Next()
+	assert.Nil(t, bad)
+	assert.Equal(t, "Concurrent modification has been detected", err.Error())
+
+	it2 := tree.Iterator()
+	assert.NotNil(t, it2)
+	assert.True(t, it2.HasNext())
+
+	tree.Delete([]byte("3"))
+	bad, err = it2.Next()
+	assert.Nil(t, bad)
+	assert.Equal(t, "Concurrent modification has been detected", err.Error())
+}
+
+func TestTreeIterateWordsStats(t *testing.T) {
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+
+	stats := treeStats{}
+
+	for it := tree.Iterator(); it.HasNext(); {
+		node, _ := it.Next()
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	}
 
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
 }
@@ -550,39 +634,135 @@ func BenchmarkTreeSearchWords(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeInsertUUIDs(b *testing.B) {
-	b.StopTimer()
-	words := loadTestFile("test/assets/uuid.txt")
-	b.StartTimer()
+func BenchmarkTreeIteratorWords(b *testing.B) {
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
 
-	// var m runtime.MemStats
-	// var makes int
+	stats := treeStats{}
+	for it := tree.Iterator(); it.HasNext(); {
+		node, _ := it.Next()
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	}
+	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
+}
+
+func BenchmarkTreeForEachWords(b *testing.B) {
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+
+	stats := treeStats{}
+	tree.ForEach(func(node Node) bool {
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+		return true
+	})
+	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
+}
+
+func BenchmarkTreeInsertUUIDs(b *testing.B) {
+	words := loadTestFile("test/assets/uuid.txt")
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		tree := New()
 		for _, w := range words {
 			tree.Insert(w, w)
 		}
-
-		// runtime.ReadMemStats(&m)
-		// fmt.Printf("\n====== MemStats: %+v\n", m)
-		// fmt.Printf("HeapSys: %d, HeapAlloc: %d, HeapIdle: %d, HeapReleased: %d, HeapObjs: %d, # %d\n", m.HeapSys, m.HeapAlloc,
-		// 	m.HeapIdle, m.HeapReleased, m.HeapObjects, makes)
-
-		// makes++
 	}
 }
 
 func BenchmarkTreeSearchUUIDs(b *testing.B) {
-	b.StopTimer()
 	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for _, w := range words {
 			tree.Search(w)
 		}
 	}
+}
+
+func BenchmarkTreeIteratorUUIDs(b *testing.B) {
+	words := loadTestFile("test/assets/uuid.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+
+	stats := treeStats{}
+	for it := tree.Iterator(); it.HasNext(); {
+		node, _ := it.Next()
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	}
+	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
+}
+
+func BenchmarkTreeForEachUUIDs(b *testing.B) {
+	words := loadTestFile("test/assets/uuid.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+
+	stats := treeStats{}
+	tree.ForEach(func(node Node) bool {
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+		return true
+	})
+	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
 }
