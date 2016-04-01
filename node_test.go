@@ -101,11 +101,11 @@ func TestNodeMatchWithKey(t *testing.T) {
 	node := n16.node16()
 	n16.setPrefix([]byte{1, 2, 3, 4, 5, 66, 77, 88, 99}, 5)
 
-	_, idx := node.match(key, 0)
+	idx := node.match(key, 0)
 	assert.Equal(t, 5, idx)
-	_, idx = node.match(key, 1)
+	idx = node.match(key, 1)
 	assert.Equal(t, 0, idx)
-	_, idx = node.match(key, 100)
+	idx = node.match(key, 100)
 	assert.Equal(t, 0, idx)
 }
 

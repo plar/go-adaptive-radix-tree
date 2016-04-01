@@ -37,7 +37,8 @@ type Tree interface {
 
 	Search(key Key) (value Value, found bool)
 
-	ForEach(Callback)
+	ForEach(callback Callback)
+	ForEachPrefix(keyPrefix Key, callback Callback)
 	Iterator() Iterator
 
 	Minimum() (min Value, found bool)

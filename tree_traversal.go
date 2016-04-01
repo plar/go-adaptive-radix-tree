@@ -72,6 +72,57 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 	}
 }
 
+func (t *tree) ForEachPrefix(key Key, callback Callback) {
+	t.forEachPrefix(t.root, key, callback)
+}
+
+func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
+	if current == nil {
+		return
+	}
+
+	depth := 0
+	for current != nil {
+		if current.isLeaf() {
+			leaf := current.leaf()
+
+			if leaf.match(key) {
+				callback(current)
+			}
+			return
+		}
+
+		if depth == len(key) {
+			leaf := current.minimum()
+			if leaf.match(key) {
+				t.forEach(current, callback)
+			}
+
+			return
+		}
+
+		node := current.node()
+		if node.prefixLen > 0 {
+			prefixLen := current.matchDeep(key, depth)
+			if prefixLen == 0 {
+				return
+			} else if depth+prefixLen == len(key) {
+				t.forEach(current, callback)
+				return
+			}
+			depth += node.prefixLen
+		}
+
+		// Find a child to recursive to
+		next := current.findChild(key.charAt(depth))
+		if *next == nil {
+			return
+		}
+		current = *next
+		depth++
+	}
+}
+
 // Iterator pattern
 func (t *tree) Iterator() Iterator {
 

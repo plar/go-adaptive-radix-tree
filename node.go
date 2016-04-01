@@ -6,24 +6,12 @@ import (
 	"unsafe"
 )
 
-type Prefix [MAX_PREFIX_LENGTH]byte
-
-func (k Kind) String() string {
-	var node2string = []string{"", "NODE4", "NODE16", "NODE48", "NODE256", "LEAF"}
-	return node2string[k]
-}
-
-func (k Key) charAt(pos int) byte {
-	if pos < 0 || pos >= len(k) {
-		return 0
-	}
-	return k[pos]
-}
+type prefix [MAX_PREFIX_LENGTH]byte
 
 type node struct {
 	numChildren int
 	prefixLen   int
-	prefix      Prefix
+	prefix      prefix
 }
 
 type node4 struct {
@@ -60,6 +48,18 @@ type artNode struct {
 }
 
 var nullNode *artNode = nil
+var node2string = []string{"", "NODE4", "NODE16", "NODE48", "NODE256", "LEAF"}
+
+func (k Kind) String() string {
+	return node2string[k]
+}
+
+func (k Key) charAt(pos int) byte {
+	if pos < 0 || pos >= len(k) {
+		return 0
+	}
+	return k[pos]
+}
 
 // Node interface implemenation
 
@@ -140,24 +140,27 @@ func (an *artNode) setPrefix(key Key, prefixLen int) *artNode {
 }
 
 func (l *leaf) match(key Key) bool {
-	return l != nil && bytes.Compare(l.key, key) == 0
+	if key == nil || len(l.key) < len(key) {
+		return false
+	}
+	return bytes.Compare(l.key[:len(key)], key) == 0
 }
 
-func (n *node) match(key Key, depth int) (bool /*match*/, int /* mismatch index*/) {
+func (n *node) match(key Key, depth int) int /* mismatch index*/ {
 	idx := 0
 	limit := min(min(n.prefixLen, MAX_PREFIX_LENGTH), len(key)-depth)
 	for ; idx < limit; idx++ {
 		if n.prefix[idx] != key[idx+depth] {
-			return false, idx
+			return idx
 		}
 	}
-	return true, idx
+	return idx
 }
 
 func (an *artNode) matchDeep(key Key, depth int) int /* mismatch index*/ {
 	node := an.node()
-	match, mismatchIdx := node.match(key, depth)
-	if !match {
+	mismatchIdx := node.match(key, depth)
+	if mismatchIdx < MAX_PREFIX_LENGTH {
 		return mismatchIdx
 	}
 

@@ -165,7 +165,7 @@ func TestTreeInsertWordsAndMinMax(t *testing.T) {
 
 	for _, w := range words {
 		v, found := tree.Search(w)
-		assert.Equal(t, w, v)
+		assert.Equal(t, w, v, string(w))
 		assert.True(t, found)
 	}
 
@@ -513,6 +513,99 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 	})
 
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+}
+
+func TestTreeTraversalPrefix(t *testing.T) {
+	dataSet := []struct {
+		keyPrefix string
+		keys      []string
+		expected  []string
+	}{
+		{
+			"api",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{"api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+		}, {
+			"a",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{"abc.123.456", "api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+		}, {
+			"b",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{},
+		},
+		{
+			"api.",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{"api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+		},
+		{
+			"api.foo.bar",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{"api.foo.bar"},
+		},
+		{
+			"api.end",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{},
+		}, {
+			"",
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
+			[]string{"abc.123.456", "api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+		}, {
+			"this:key:has",
+			[]string{
+				"this:key:has:a:long:prefix:3",
+				"this:key:has:a:long:common:prefix:2",
+				"this:key:has:a:long:common:prefix:1",
+			},
+			[]string{
+				"this:key:has:a:long:common:prefix:1",
+				"this:key:has:a:long:common:prefix:2",
+				"this:key:has:a:long:prefix:3",
+			},
+		},
+	}
+
+	for _, d := range dataSet {
+		tree := New()
+		for _, k := range d.keys {
+			tree.Insert(Key(k), string(k))
+		}
+
+		actual := []string{}
+		tree.ForEachPrefix(Key(d.keyPrefix), func(node Node) bool {
+			if node.Kind() != NODE_LEAF {
+				return true
+			}
+			actual = append(actual, string(node.Key()))
+			return true
+		})
+
+		assert.Equal(t, d.expected, actual, d.keyPrefix)
+	}
+
+}
+
+func TestTreeTraversalPrefixWords(t *testing.T) {
+	t.SkipNow()
+	words := loadTestFile("test/assets/words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, string(w))
+	}
+
+	tree.ForEachPrefix(Key("antis"), func(node Node) bool {
+		if node.Kind() != NODE_LEAF {
+			return true
+		}
+
+		fmt.Println(string(node.Key()))
+		// if node.Value() != nil {
+		// 	fmt.Println("\tvalue=", node.Value().(string))
+		// }
+		return true
+	})
 }
 
 func TestTreeIterator(t *testing.T) {

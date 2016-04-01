@@ -45,8 +45,8 @@ func (t *tree) Search(key Key) (Value, bool) {
 
 		node := current.node()
 		if node.prefixLen > 0 {
-			match, _ := node.match(key, depth)
-			if !match {
+			prefixLen := node.match(key, depth)
+			if prefixLen != min(node.prefixLen, MAX_PREFIX_LENGTH) {
 				return nil, false
 			}
 			depth += node.prefixLen
@@ -193,8 +193,8 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 
 	node := current.node()
 	if node.prefixLen > 0 {
-		match, _ := node.match(key, depth)
-		if !match {
+		prefixLen := node.match(key, depth)
+		if prefixLen != min(node.prefixLen, MAX_PREFIX_LENGTH) {
 			return nil, false
 		}
 
