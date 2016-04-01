@@ -1,7 +1,7 @@
 An Adaptive Radix Tree Implementation in Go
 ====
 
-[![Build Status](https://travis-ci.org/plar/plar/go-adaptive-radix-tree.png)](https://travis-ci.org/plar/go-adaptive-radix-tree)
+[![Build Status](https://travis-ci.org/plar/go-adaptive-radix-tree.svg?branch=master)](https://travis-ci.org/plar/go-adaptive-radix-tree)
 
 This library provides a Go implementation of the Adaptive Radix Tree (ART).
 
