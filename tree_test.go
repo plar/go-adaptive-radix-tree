@@ -196,11 +196,12 @@ func TestTreeInsertUUIDsAndMinMax(t *testing.T) {
 
 func TestTreeInsertAndDeleteOperations(t *testing.T) {
 	type testData struct {
-		message string
-		insert  interface{}
-		delete  interface{}
-		size    int
-		root    interface{}
+		message      string
+		insert       interface{}
+		delete       interface{}
+		size         int
+		root         interface{}
+		deleteStatus bool
 	}
 	type treeTestCustom func(data *testData, tree *tree)
 
@@ -210,43 +211,68 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			[]string{"test"},
 			[]string{"test"},
 			0,
-			nil},
+			nil,
+			true},
 		{
 			"Insert 2 Delete 1",
 			[]string{"test1", "test2"},
 			[]string{"test2"},
 			1,
-			Leaf},
+			Leaf,
+			true},
 		{
 			"Insert 2 Delete 2",
 			[]string{"test1", "test2"},
 			[]string{"test1", "test2"},
 			0,
-			nil},
+			nil,
+			true},
 		{
 			"Insert 5 Delete 1",
 			[]string{"1", "2", "3", "4", "5"},
 			[]string{"1"},
 			4,
-			Node4},
+			Node4,
+			true},
+		{
+			"Insert 5 Try to delete 1 wrong",
+			[]string{"1", "2", "3", "4", "5"},
+			[]string{"123"},
+			5,
+			Node16,
+			false},
 		{
 			"Insert 5 Delete 5",
 			[]string{"1", "2", "3", "4", "5"},
 			[]string{"1", "2", "3", "4", "5"},
 			0,
-			nil},
+			nil,
+			true},
 		{
 			"Insert 17 Delete 1",
 			[]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
 			[]string{"2"},
 			16,
-			Node16},
+			Node16,
+			true},
 		{
 			"Insert 17 Delete 17",
 			[]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
 			[]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
 			0,
-			nil},
+			nil,
+			true},
+		{
+			"Insert 49 Delete 0",
+			treeTestCustom(func(data *testData, tree *tree) {
+				for i := byte(0); i < 49; i++ {
+					tree.Insert(Key{i}, []byte{i})
+				}
+			}),
+			[]byte{byte(123)},
+			49,
+			Node256,
+			false},
 		{
 			"Insert 49 Delete 1",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -256,7 +282,8 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			}),
 			[]byte{byte(2)},
 			48,
-			Node48},
+			Node48,
+			true},
 		{
 			"Insert 49 Delete 49",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -273,7 +300,26 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 				}
 			}),
 			0,
-			nil},
+			nil,
+			true},
+		{
+			"Insert 49 Delete 49",
+			treeTestCustom(func(data *testData, tree *tree) {
+				for i := byte(0); i < 49; i++ {
+					tree.Insert(Key{i}, []byte{i})
+				}
+			}),
+			treeTestCustom(func(data *testData, tree *tree) {
+				for i := byte(0); i < 49; i++ {
+					term := []byte{i}
+					val, deleted := tree.Delete(term)
+					assert.True(t, deleted, data.message)
+					assert.Equal(t, term, val)
+				}
+			}),
+			0,
+			nil,
+			true},
 		{
 			"Insert 256 Delete 1",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -285,7 +331,8 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			}),
 			[]byte{2},
 			255,
-			Node256},
+			Node256,
+			true},
 		{
 			"Insert 256 Delete 256",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -298,12 +345,13 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 				for i := 0; i < 256; i++ {
 					term := fmt.Sprintf("%d", i)
 					val, deleted := tree.Delete(Key(term))
-					assert.True(t, deleted, data.message)
+					assert.Equal(t, data.deleteStatus, deleted)
 					assert.Equal(t, term, val)
 				}
 			}),
 			0,
-			nil},
+			nil,
+			true},
 	}
 
 	for _, ds := range data {
@@ -322,7 +370,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		if strs, ok := ds.delete.([]string); ok {
 			for _, term := range strs {
 				val, deleted := tree.Delete(Key(term))
-				assert.True(t, deleted, ds.message)
+				assert.Equal(t, ds.deleteStatus, deleted, ds.message)
 
 				if s, ok := val.(string); ok {
 					assert.Equal(t, term, s, ds.message)
@@ -335,9 +383,11 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			for _, term := range bts {
 
 				val, deleted := tree.Delete(Key{term})
-				assert.True(t, deleted, ds.message)
+				assert.Equal(t, ds.deleteStatus, deleted, ds.message)
 
-				assert.Equal(t, []byte{term}, val, ds.message)
+				if deleted {
+					assert.Equal(t, []byte{term}, val, ds.message)
+				}
 
 				_, found := tree.Search(Key{term})
 				assert.False(t, found, ds.message)
@@ -361,6 +411,17 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 	}
 }
 
+func TestDeleteOneWithSimilarButShorterPrefix(t *testing.T) {
+	tree := newTree()
+	tree.Insert(Key("keyb::"), "0")
+	tree.Insert(Key("keyb::1"), "1")
+	tree.Insert(Key("keyb::2"), "2")
+
+	v, deleted := tree.Delete(Key("keyb:"))
+	assert.Nil(t, v)
+	assert.False(t, deleted)
+}
+
 // Inserting a single value into the tree and removing it should result in a nil tree root.
 func TestInsertAndDeleteOne(t *testing.T) {
 	tree := newTree()
@@ -370,6 +431,12 @@ func TestInsertAndDeleteOne(t *testing.T) {
 	assert.Equal(t, "data", v)
 	assert.Equal(t, 0, tree.size)
 	assert.Nil(t, tree.root)
+
+	tree = newTree()
+	tree.Insert(Key("test"), "data")
+	v, deleted = tree.Delete(Key("wrong-key"))
+	assert.Nil(t, v)
+	assert.False(t, deleted)
 }
 
 func TestInsertTwoAndDeleteOne(t *testing.T) {
@@ -439,6 +506,12 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	assert.Equal(t, traversal[2].Key(), Key("2"))
 	assert.Equal(t, traversal[2].Value(), 2)
 	assert.Equal(t, Leaf, traversal[2].Kind())
+
+	tree.ForEach(func(node Node) bool {
+		assert.Equal(t, Node4, node.Kind())
+		return true
+	}, TraverseNode)
+
 }
 
 func TestTreeTraversalNode48(t *testing.T) {
@@ -522,6 +595,11 @@ func TestTreeTraversalPrefix(t *testing.T) {
 		expected  []string
 	}{
 		{
+			"",
+			[]string{},
+			[]string{},
+		},
+		{
 			"api",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 			[]string{"api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
@@ -585,6 +663,17 @@ func TestTreeTraversalPrefix(t *testing.T) {
 		assert.Equal(t, d.expected, actual, d.keyPrefix)
 	}
 
+}
+
+func TestTreeTraversalForEachPrefixWithSimilarKey(t *testing.T) {
+	tree := newTree()
+	tree.Insert(Key("abc0"), "0")
+	tree.Insert(Key("abc1"), "1")
+	tree.Insert(Key("abc2"), "2")
+
+	tree.ForEachPrefix(Key("abc3"), func(node Node) bool {
+		return true
+	})
 }
 
 func TestTreeTraversalPrefixWords(t *testing.T) {
@@ -658,6 +747,15 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 
 	tree.Delete([]byte("3"))
 	bad, err = it2.Next()
+	assert.Nil(t, bad)
+	assert.Equal(t, ErrConcurrentModification, err)
+
+	// test buffered ConcurrentModification
+	it3 := tree.Iterator(TraverseNode)
+	assert.NotNil(t, it3)
+	tree.Insert(Key("3"), []byte{3})
+	assert.True(t, it3.HasNext())
+	bad, err = it3.Next()
 	assert.Nil(t, bad)
 	assert.Equal(t, ErrConcurrentModification, err)
 }
