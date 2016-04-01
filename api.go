@@ -11,6 +11,14 @@ const (
 	NODE_LEAF = Kind(5)
 )
 
+// Traverse Options
+const (
+	//
+	TRAVERSE_LEAF = 1
+	TRAVERSE_NODE = 2
+	TRAVERSE_ALL  = TRAVERSE_LEAF | TRAVERSE_NODE
+)
+
 type Kind int
 
 type Key []byte
@@ -21,7 +29,7 @@ type Callback func(node Node) (cont bool)
 type Node interface {
 	Kind() Kind
 
-	// The following method valid only for NODE_LEAF type of node
+	// The following methods are valid only for Leaf node
 	Key() Key
 	Value() Value
 }
@@ -37,9 +45,11 @@ type Tree interface {
 
 	Search(key Key) (value Value, found bool)
 
-	ForEach(callback Callback)
+	ForEach(callback Callback, options ...int)
 	ForEachPrefix(keyPrefix Key, callback Callback)
-	Iterator() Iterator
+
+	Iterator(options ...int) Iterator
+	//IteratorPrefix() Iterator
 
 	Minimum() (min Value, found bool)
 	Maximum() (max Value, found bool)

@@ -16,8 +16,44 @@ type iterator struct {
 	depth      []*iteratorLevel
 }
 
-func (t *tree) ForEach(callback Callback) {
-	t.forEach(t.root, callback)
+type bufferedIterator struct {
+	options  int
+	nextNode Node
+	err      error
+	it       *iterator
+}
+
+func traverseOptions(opts ...int) int {
+	options := 0
+	for _, opt := range opts {
+		options |= opt
+	}
+	options &= TRAVERSE_ALL
+	if options == 0 {
+		// By default filter only leafs
+		options = TRAVERSE_LEAF
+	}
+	return options
+}
+
+func traverseFilter(options int, callback Callback) Callback {
+	if options == TRAVERSE_ALL {
+		return callback
+	}
+
+	return func(node Node) bool {
+		if options&TRAVERSE_LEAF == TRAVERSE_LEAF && node.Kind() == NODE_LEAF {
+			return callback(node)
+		} else if options&TRAVERSE_NODE == TRAVERSE_NODE && node.Kind() != NODE_LEAF {
+			return callback(node)
+		}
+		return true
+	}
+}
+
+func (t *tree) ForEach(callback Callback, opts ...int) {
+	options := traverseOptions(opts...)
+	t.forEach(t.root, traverseFilter(options, callback))
 }
 
 func (t *tree) forEach(current *artNode, callback Callback) {
@@ -124,15 +160,25 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 }
 
 // Iterator pattern
-func (t *tree) Iterator() Iterator {
+func (t *tree) Iterator(opts ...int) Iterator {
+	options := traverseOptions(opts...)
 
-	ti := &iterator{
+	it := &iterator{
 		version:    t.version,
 		tree:       t,
 		nextNode:   t.root,
 		depthLevel: 0,
 		depth:      []*iteratorLevel{&iteratorLevel{t.root, 0}}}
-	return ti
+
+	if options&TRAVERSE_ALL == TRAVERSE_ALL {
+		return it
+	}
+
+	bti := &bufferedIterator{
+		options: options,
+		it:      it,
+	}
+	return bti
 }
 
 func (ti *iterator) checkConcurrentModification() error {
@@ -249,4 +295,25 @@ func (ti *iterator) next() {
 			return
 		}
 	}
+}
+
+func (bti *bufferedIterator) HasNext() bool {
+	for bti.it.HasNext() {
+		bti.nextNode, bti.err = bti.it.Next()
+		if bti.err != nil {
+			return true
+		}
+		if bti.options&TRAVERSE_LEAF == TRAVERSE_LEAF && bti.nextNode.Kind() == NODE_LEAF {
+			return true
+		} else if bti.options&TRAVERSE_NODE == TRAVERSE_NODE && bti.nextNode.Kind() != NODE_LEAF {
+			return true
+		}
+	}
+	bti.nextNode = nil
+	bti.err = nil
+	return false
+}
+
+func (bti *bufferedIterator) Next() (Node, error) {
+	return bti.nextNode, bti.err
 }

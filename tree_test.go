@@ -424,7 +424,7 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
 		return true
-	})
+	}, TRAVERSE_ALL)
 
 	assert.Equal(t, 2, tree.size)
 	assert.Equal(t, traversal[0], tree.root)
@@ -452,7 +452,7 @@ func TestTreeTraversalNode48(t *testing.T) {
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
 		return true
-	})
+	}, TRAVERSE_ALL)
 
 	// Order should be Node48, then the rest of the keys in sorted order
 	assert.Equal(t, 48, tree.size)
@@ -482,7 +482,7 @@ func TestTreeTraversalCancel(t *testing.T) {
 		nodes = append(nodes, node)
 		curNode++
 		return true
-	})
+	}, TRAVERSE_ALL)
 
 	assert.Equal(t, 5, len(nodes))
 
@@ -510,7 +510,7 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 			stats.leafCount++
 		}
 		return true
-	})
+	}, TRAVERSE_ALL)
 
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
 }
@@ -613,7 +613,7 @@ func TestTreeIterator(t *testing.T) {
 	tree.Insert(Key("2"), []byte{2})
 	tree.Insert(Key("1"), []byte{1})
 
-	it := tree.Iterator()
+	it := tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it)
 	assert.True(t, it.HasNext())
 	n4, err := it.Next()
@@ -642,7 +642,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	tree.Insert(Key("2"), []byte{2})
 	tree.Insert(Key("1"), []byte{1})
 
-	it1 := tree.Iterator()
+	it1 := tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it1)
 	assert.True(t, it1.HasNext())
 
@@ -652,7 +652,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	assert.Nil(t, bad)
 	assert.Equal(t, "Concurrent modification has been detected", err.Error())
 
-	it2 := tree.Iterator()
+	it2 := tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it2)
 	assert.True(t, it2.HasNext())
 
@@ -671,7 +671,7 @@ func TestTreeIterateWordsStats(t *testing.T) {
 
 	stats := treeStats{}
 
-	for it := tree.Iterator(); it.HasNext(); {
+	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
 		case NODE_4:
@@ -688,6 +688,42 @@ func TestTreeIterateWordsStats(t *testing.T) {
 	}
 
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+
+	stats = treeStats{}
+	for it := tree.Iterator(); it.HasNext(); {
+		node, _ := it.Next()
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	}
+	assert.Equal(t, treeStats{235886, 0, 0, 0, 0}, stats)
+
+	stats = treeStats{}
+	for it := tree.Iterator(TRAVERSE_NODE); it.HasNext(); {
+		node, _ := it.Next()
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+	}
+	assert.Equal(t, treeStats{0, 111616, 12181, 458, 1}, stats)
 }
 
 func TestTreeInsertAndDeleteAllWords(t *testing.T) {
@@ -746,7 +782,7 @@ func TestTreeAPI(t *testing.T) {
 	assert.Nil(t, value)
 	assert.False(t, found)
 
-	it := tree.Iterator()
+	it := tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it)
 	assert.False(t, it.HasNext())
 	_, err := it.Next()
@@ -783,7 +819,7 @@ func TestTreeAPI(t *testing.T) {
 		return true
 	})
 
-	it = tree.Iterator()
+	it = tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it)
 	assert.True(t, it.HasNext())
 	next, err := it.Next()
@@ -851,7 +887,7 @@ func BenchmarkTreeIteratorWords(b *testing.B) {
 	b.ResetTimer()
 
 	stats := treeStats{}
-	for it := tree.Iterator(); it.HasNext(); {
+	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
 		case NODE_4:
@@ -892,8 +928,44 @@ func BenchmarkTreeForEachWords(b *testing.B) {
 			stats.leafCount++
 		}
 		return true
-	})
+	}, TRAVERSE_ALL)
 	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
+
+	stats = treeStats{}
+	tree.ForEach(func(node Node) bool {
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+		return true
+	}, TRAVERSE_LEAF)
+	assert.Equal(b, treeStats{235886, 0, 0, 0, 0}, stats)
+
+	stats = treeStats{}
+	tree.ForEach(func(node Node) bool {
+		switch node.Kind() {
+		case NODE_4:
+			stats.node4Count++
+		case NODE_16:
+			stats.node16Count++
+		case NODE_48:
+			stats.node48Count++
+		case NODE_256:
+			stats.node256Count++
+		case NODE_LEAF:
+			stats.leafCount++
+		}
+		return true
+	}, TRAVERSE_NODE)
+	assert.Equal(b, treeStats{0, 111616, 12181, 458, 1}, stats)
 }
 
 func BenchmarkTreeInsertUUIDs(b *testing.B) {
@@ -930,7 +1002,7 @@ func BenchmarkTreeIteratorUUIDs(b *testing.B) {
 	b.ResetTimer()
 
 	stats := treeStats{}
-	for it := tree.Iterator(); it.HasNext(); {
+	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
 		case NODE_4:
@@ -971,6 +1043,6 @@ func BenchmarkTreeForEachUUIDs(b *testing.B) {
 			stats.leafCount++
 		}
 		return true
-	})
+	}, TRAVERSE_ALL)
 	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
 }
