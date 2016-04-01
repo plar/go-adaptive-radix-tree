@@ -1,2 +1,8 @@
 language: go
-script: go test
+sudo: false
+
+install:
+  - go get github.com/stretchr/testify/assert
+
+script:
+  - go test -v ./...
