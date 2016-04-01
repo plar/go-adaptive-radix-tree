@@ -1,7 +1,7 @@
 package art
 
 import (
-	"sync"
+	// "sync"
 
 	"unsafe"
 )
@@ -22,14 +22,14 @@ func newTree() *tree {
 	return &tree{}
 }
 
-type poolObjFactory struct {
-	artNodePool sync.Pool
-	node4Pool   sync.Pool
-	node16Pool  sync.Pool
-	node48Pool  sync.Pool
-	node256Pool sync.Pool
-	leafPool    sync.Pool
-}
+// type poolObjFactory struct {
+// 	artNodePool sync.Pool
+// 	node4Pool   sync.Pool
+// 	node16Pool  sync.Pool
+// 	node48Pool  sync.Pool
+// 	node256Pool sync.Pool
+// 	leafPool    sync.Pool
+// }
 
 type objFactory struct{}
 
