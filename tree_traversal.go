@@ -1,7 +1,5 @@
 package art
 
-import "errors"
-
 type iteratorLevel struct {
 	node     *artNode
 	childIdx int
@@ -186,7 +184,7 @@ func (ti *iterator) checkConcurrentModification() error {
 		return nil
 	}
 
-	return errors.New("Concurrent modification has been detected")
+	return ErrConcurrentModification
 }
 
 func (ti *iterator) HasNext() bool {
@@ -195,7 +193,7 @@ func (ti *iterator) HasNext() bool {
 
 func (ti *iterator) Next() (Node, error) {
 	if !ti.HasNext() {
-		return nil, errors.New("There are no more nodes in the tree")
+		return nil, ErrNoMoreNodes
 	}
 
 	err := ti.checkConcurrentModification()

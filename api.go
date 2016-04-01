@@ -2,61 +2,118 @@
 
 package art
 
-// node types
+import "errors"
+
+// A constant exposing all node types.
 const (
+	NODE_LEAF = Kind(0)
 	NODE_4    = Kind(1)
 	NODE_16   = Kind(2)
 	NODE_48   = Kind(3)
 	NODE_256  = Kind(4)
-	NODE_LEAF = Kind(5)
 )
 
-// Traverse Options
+// Traverse Options.
 const (
-	//
+	// Iterate only over leaf nodes.
 	TRAVERSE_LEAF = 1
+
+	// Iterate only over non-leaf nodes.
 	TRAVERSE_NODE = 2
-	TRAVERSE_ALL  = TRAVERSE_LEAF | TRAVERSE_NODE
+
+	// Iterate over all nodes in the tree.
+	TRAVERSE_ALL = TRAVERSE_LEAF | TRAVERSE_NODE
 )
 
+// These errors can be returned when iteration over the tree.
+var (
+	ErrConcurrentModification = errors.New("Concurrent modification has been detected")
+	ErrNoMoreNodes            = errors.New("There are no more nodes in the tree")
+)
+
+// Node Kind type.
 type Kind int
 
+// Leaf Key Type.
 type Key []byte
+
+// Leaf Value type.
 type Value interface{}
 
+// The callback function.
+// if the callback function returns false then iteration is terminated.
 type Callback func(node Node) (cont bool)
 
+// ART Node interface.
 type Node interface {
+	// Kind return node type.
 	Kind() Kind
 
-	// The following methods are valid only for Leaf node
+	// Key returns leaf's key.
+	// This method is only valid for leaf node,
+	// if its called on non-leaf node then returns nil.
 	Key() Key
+
+	// Value returns leaf's value.
+	// This method is only valid for leaf node,
+	// if its called on non-leaf node then returns nil.
 	Value() Value
 }
 
+// Iterator iterates over nodes in key order.
 type Iterator interface {
+	// Returns true if the iteration has more nodes when traversing the tree.
 	HasNext() bool
+
+	// Returns the next element in the tree and advances the iterator position.
+	// Returns ErrNoMoreNodes error if there are no more nodes in the tree.
+	// Check if there is a next node with HasNext method.
+	// Returns ErrConcurrentModification error if the tree has been structurally
+	// modified after the iterator was created.
 	Next() (Node, error)
 }
 
+// Tree is the adaptive radix tree interface.
 type Tree interface {
+	// Insert a new key into the tree.
+	// If the key already in the tree then return oldValue, true and nil, false otherwise.
 	Insert(key Key, value Value) (oldValue Value, updated bool)
-	Delete(key Key) (oldValue Value, deleted bool)
 
+	// Delete removes a key from the tree and key's value, true is returned.
+	// If the key does not exists then nothing is done and nil, false is returned.
+	Delete(key Key) (value Value, deleted bool)
+
+	// Search returns the value of the specific key.
+	// If the key exists then return value, true and nil, false otherwise.
 	Search(key Key) (value Value, found bool)
 
+	// ForEach executes a provided callback once per leaf node by default.
+	// The callback iteration is terminated if the callback function returns false.
+	// Pass TRAVERSE_XXX as an options to execute a provided callback
+	// once per XXX node type in the tree.
 	ForEach(callback Callback, options ...int)
+
+	// ForEachPrefix executes a provided callback once per leaf node that
+	// leaf's key starts with the given keyPrefix.
+	// The callback iteration is terminated if the callback function returns false.
 	ForEachPrefix(keyPrefix Key, callback Callback)
 
+	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
+	// Pass TRAVERSE_XXX as an options to return an iterator for preorder traversal over all XXX node types.
 	Iterator(options ...int) Iterator
-	//IteratorPrefix() Iterator
+	//IteratorPrefix(key Key) Iterator
 
+	// Minimum returns the minumum valued leaf, true if leaf is found and nil, false otherwise.
 	Minimum() (min Value, found bool)
+
+	// Maximum returns the maximum valued leaf, true if leaf is found and nil, false otherwise.
 	Maximum() (max Value, found bool)
 
+	// Returns size of the tree
 	Size() int
 }
 
+// New creates a new adaptive radix tree
 func New() Tree {
 	return newTree()
 }

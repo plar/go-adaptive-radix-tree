@@ -8,47 +8,55 @@ import (
 
 type prefix [MAX_PREFIX_LENGTH]byte
 
+// Base part of all the various nodes, except leaf
 type node struct {
 	numChildren int
 	prefixLen   int
 	prefix      prefix
 }
 
+// Node with 4 children
 type node4 struct {
 	node
 	keys     [NODE_4_MAX]byte
 	children [NODE_4_MAX]*artNode
 }
 
+// Node with 16 children
 type node16 struct {
 	node
 	keys     [NODE_16_MAX]byte
 	children [NODE_16_MAX]*artNode
 }
 
+// Node with 48 children
 type node48 struct {
 	node
 	keys     [NODE_256_MAX]byte
 	children [NODE_48_MAX]*artNode
 }
 
+// Node with 256 children
 type node256 struct {
 	node
 	children [NODE_256_MAX]*artNode
 }
 
+// Leaf node with variable key length
 type leaf struct {
 	key   Key
 	value interface{}
 }
 
+// ART node stores all available nodes, leaf and node type
 type artNode struct {
 	kind Kind
 	ref  unsafe.Pointer
 }
 
 var nullNode *artNode = nil
-var node2string = []string{"", "NODE4", "NODE16", "NODE48", "NODE256", "LEAF"}
+
+var node2string = []string{"LEAF", "NODE4", "NODE16", "NODE48", "NODE256"}
 
 func (k Kind) String() string {
 	return node2string[k]

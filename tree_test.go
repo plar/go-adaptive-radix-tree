@@ -633,7 +633,7 @@ func TestTreeIterator(t *testing.T) {
 	assert.False(t, it.HasNext())
 	bad, err := it.Next()
 	assert.Nil(t, bad)
-	assert.Equal(t, "There are no more nodes in the tree", err.Error())
+	assert.Equal(t, ErrNoMoreNodes, err)
 
 }
 
@@ -650,7 +650,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	tree.Insert(Key("3"), []byte{3})
 	bad, err := it1.Next()
 	assert.Nil(t, bad)
-	assert.Equal(t, "Concurrent modification has been detected", err.Error())
+	assert.Equal(t, ErrConcurrentModification, err)
 
 	it2 := tree.Iterator(TRAVERSE_ALL)
 	assert.NotNil(t, it2)
@@ -659,7 +659,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	tree.Delete([]byte("3"))
 	bad, err = it2.Next()
 	assert.Nil(t, bad)
-	assert.Equal(t, "Concurrent modification has been detected", err.Error())
+	assert.Equal(t, ErrConcurrentModification, err)
 }
 
 func TestTreeIterateWordsStats(t *testing.T) {
