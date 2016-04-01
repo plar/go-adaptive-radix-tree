@@ -66,17 +66,17 @@ Benchmarks were performed on datasets extracted from the [2] project:
 - Word dataset contains list of 235886 english words.
 - UUID dataset contains 100000 uuids.
 
-## go-adaptive-radix-tree
-* BenchmarkTreeInsertWords-8        10     163,837,807 ns/op    40,316,974 B/op    1,218,299 allocs/op
-* BenchmarkTreeSearchWords-8        30      48,515,927 ns/op             0 B/op            0 allocs/op
-* BenchmarkTreeInsertUUIDs-8        20     102,329,315 ns/op    18,974,661 B/op      485,104 allocs/op
-* BenchmarkTreeSearchUUIDs-8        50      38,480,097 ns/op             0 B/op            0 allocs/op
-
-## go-art
-* BenchmarkTreeInsertWords-8         5     272,047,975 ns/op    81,628,987 B/op    2,547,316 allocs/op
-* BenchmarkTreeSearchWords-8        10     129,011,177 ns/op    13,272,278 B/op    1,659,033 allocs/op
-* BenchmarkTreeInsertUUIDs-8        10     140,309,246 ns/op    33,678,160 B/op      874,561 allocs/op
-* BenchmarkTreeSearchUUIDs-8        20      82,120,943 ns/op     3,883,131 B/op      485,391 allocs/op
+| :--- | ---: | ---: | ---: | ---: |
+| *go-adaptive-radix-tree* |||||
+| BenchmarkTreeInsertWords-8|10|163,837,807 ns/op|40,316,974 B/op|1,218,299 allocs/op|
+| BenchmarkTreeSearchWords-8|30| 48,515,927 ns/op|         0 B/op|        0 allocs/op|
+| BenchmarkTreeInsertUUIDs-8|20|102,329,315 ns/op|18,974,661 B/op|  485,104 allocs/op|
+| BenchmarkTreeSearchUUIDs-8|50| 38,480,097 ns/op|         0 B/op|        0 allocs/op|
+| *go-art* |||||
+| BenchmarkTreeInsertWords-8| 5|272,047,975 ns/op|81,628,987 B/op|2,547,316 allocs/op|
+| BenchmarkTreeSearchWords-8|10|129,011,177 ns/op|13,272,278 B/op|1,659,033 allocs/op|
+| BenchmarkTreeInsertUUIDs-8|10|140,309,246 ns/op|33,678,160 B/op|  874,561 allocs/op|
+| BenchmarkTreeSearchUUIDs-8|20| 82,120,943 ns/op| 3,883,131 B/op|  485,391 allocs/op|
 
 # References
 
