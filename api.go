@@ -87,8 +87,8 @@ type Tree interface {
 
 	// ForEach executes a provided callback once per leaf node by default.
 	// The callback iteration is terminated if the callback function returns false.
-	// Pass TRAVERSE_XXX as an options to execute a provided callback
-	// once per XXX node type in the tree.
+	// Pass TraverseXXX as an options to execute a provided callback
+	// once per NodeXXX type in the tree.
 	ForEach(callback Callback, options ...int)
 
 	// ForEachPrefix executes a provided callback once per leaf node that
@@ -97,7 +97,7 @@ type Tree interface {
 	ForEachPrefix(keyPrefix Key, callback Callback)
 
 	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
-	// Pass TRAVERSE_XXX as an options to return an iterator for preorder traversal over all XXX node types.
+	// Pass TraverseXXX as an options to return an iterator for preorder traversal over all NodeXXX types.
 	Iterator(options ...int) Iterator
 	//IteratorPrefix(key Key) Iterator
 

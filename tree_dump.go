@@ -170,34 +170,49 @@ func (ts *treeStringer) rootNode(an *artNode) {
 
 /*
 DumpNode returns Tree in the human readable format:
+ package main
 
-─── Node4 (0xc8200f3b30)
-    prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
-    keys: [65 97 0 0] [Aa··]
-    children(2): [0xc8200f3af0 0xc8200f3b70 <nil> <nil>]
-    ├── Leaf (0xc8200f3af0)
-    │   key: [65] [A]
-    │   val: A
-    │
-    ├── Node4 (0xc8200f3b70)
-    │   prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
-    │   keys: [0 97 0 0] [·a··]
-    │   children(2): [0xc8200f3b20 0xc8200f3b60 <nil> <nil>]
-    │   ├── Leaf (0xc8200f3b20)
-    │   │   key: [97] [a]
-    │   │   val: a
-    │   │
-    │   ├── Leaf (0xc8200f3b60)
-    │   │   key: [97 97] [aa]
-    │   │   val: aa
-    │   │
-    │   ├── nil
-    │   └── nil
-    │
-    ├── nil
-    └── nil
+ import (
+	"fmt"
+	"github.com/plar/go-adaptive-radix-tree"
+ )
+
+ func main() {
+ 	tree := art.New()
+	terms := []string{"A", "a", "aa"}
+	for _, term := range terms {
+		tree.Insert(art.Key(term), term)
+	}
+	fmt.Println(tree)
+ }
+
+ Output:
+ ─── Node4 (0xc8200f3b30)
+     prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
+     keys: [65 97 0 0] [Aa··]
+     children(2): [0xc8200f3af0 0xc8200f3b70 <nil> <nil>]
+     ├── Leaf (0xc8200f3af0)
+     │   key: [65] [A]
+     │   val: A
+     │
+     ├── Node4 (0xc8200f3b70)
+     │   prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
+     │   keys: [0 97 0 0] [·a··]
+     │   children(2): [0xc8200f3b20 0xc8200f3b60 <nil> <nil>]
+     │   ├── Leaf (0xc8200f3b20)
+     │   │   key: [97] [a]
+     │   │   val: a
+     │   │
+     │   ├── Leaf (0xc8200f3b60)
+     │   │   key: [97 97] [aa]
+     │   │   val: aa
+     │   │
+     │   ├── nil
+     │   └── nil
+     │
+     ├── nil
+     └── nil
 */
-
 func DumpNode(root *artNode) string {
 	ts := &treeStringer{make([]depthStorage, 256), bytes.NewBufferString("")}
 	ts.rootNode(root)
