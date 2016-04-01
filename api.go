@@ -44,7 +44,7 @@ type Callback func(node Node) (cont bool)
 
 // ART Node interface.
 type Node interface {
-	// Kind return node type.
+	// Kind returns node type.
 	Kind() Kind
 
 	// Key returns leaf's key.
@@ -71,7 +71,7 @@ type Iterator interface {
 	Next() (Node, error)
 }
 
-// Tree is the adaptive radix tree interface.
+// Adaptive Radix Tree interface.
 type Tree interface {
 	// Insert a new key into the tree.
 	// If the key already in the tree then return oldValue, true and nil, false otherwise.

@@ -7,7 +7,9 @@ The design of ART is based on "The Adaptive Radix Tree: ARTful Indexing for Main
 Also the current implementation was inspired by [2] and [3]
 
 [1] http://db.in.tum.de/~leis/papers/ART.pdf
+
 [2] https://github.com/armon/libart
+
 [3] https://github.com/kellydunn/go-art
 */
 package art

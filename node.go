@@ -18,28 +18,28 @@ type node struct {
 // Node with 4 children
 type node4 struct {
 	node
-	keys     [Node4Max]byte
-	children [Node4Max]*artNode
+	keys     [node4Max]byte
+	children [node4Max]*artNode
 }
 
 // Node with 16 children
 type node16 struct {
 	node
-	keys     [Node16Max]byte
-	children [Node16Max]*artNode
+	keys     [node16Max]byte
+	children [node16Max]*artNode
 }
 
 // Node with 48 children
 type node48 struct {
 	node
-	keys     [Node256Max]byte
-	children [Node48Max]*artNode
+	keys     [node256Max]byte
+	children [node48Max]*artNode
 }
 
 // Node with 256 children
 type node256 struct {
 	node
-	children [Node256Max]*artNode
+	children [node256Max]*artNode
 }
 
 // Leaf node with variable key length
@@ -58,6 +58,7 @@ var nullNode *artNode = nil
 
 var node2string = []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}
 
+// String returns string representation of the Kind value
 func (k Kind) String() string {
 	return node2string[k]
 }
@@ -92,13 +93,13 @@ func (an *artNode) Value() Value {
 func (an *artNode) shrinkThreshold() int {
 	switch an.kind {
 	case Node4:
-		return Node4Shrink
+		return node4Shrink
 	case Node16:
-		return Node16Shrink
+		return node16Shrink
 	case Node48:
-		return Node48Shrink
+		return node48Shrink
 	case Node256:
-		return Node256Shrink
+		return node256Shrink
 	}
 
 	return 0
@@ -107,13 +108,13 @@ func (an *artNode) shrinkThreshold() int {
 func (an *artNode) minChildren() int {
 	switch an.kind {
 	case Node4:
-		return Node4Min
+		return node4Min
 	case Node16:
-		return Node16Min
+		return node16Min
 	case Node48:
-		return Node48Min
+		return node48Min
 	case Node256:
-		return Node256Min
+		return node256Min
 	}
 
 	return 0
@@ -122,13 +123,13 @@ func (an *artNode) minChildren() int {
 func (an *artNode) maxChildren() int {
 	switch an.kind {
 	case Node4:
-		return Node4Max
+		return node4Max
 	case Node16:
-		return Node16Max
+		return node16Max
 	case Node48:
-		return Node48Max
+		return node48Max
 	case Node256:
-		return Node256Max
+		return node256Max
 	}
 
 	return 0
