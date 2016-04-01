@@ -17,7 +17,7 @@ test-race:
 	@echo "*** Run tests with race condition..."
 	@go test --race -v .
 
-test-cover:
+test-cover-builder:
 	@go test -covermode=count -coverprofile=/tmp/art.out .
 
 	@rm -f /tmp/art_coverage.out
@@ -25,6 +25,7 @@ test-cover:
 	@cat /tmp/art.out | tail -n +2 >> /tmp/art_coverage.out
 	@rm /tmp/art.out
 
+test-cover: test-cover-builder
 	@go tool cover -html=/tmp/art_coverage.out
 
 build:
