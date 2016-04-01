@@ -1,28 +1,26 @@
-// Go implementation of Adaptive Radix Tree (ART)
-
 package art
 
 import "errors"
 
 // A constant exposing all node types.
 const (
-	NODE_LEAF = Kind(0)
-	NODE_4    = Kind(1)
-	NODE_16   = Kind(2)
-	NODE_48   = Kind(3)
-	NODE_256  = Kind(4)
+	Leaf    = Kind(0)
+	Node4   = Kind(1)
+	Node16  = Kind(2)
+	Node48  = Kind(3)
+	Node256 = Kind(4)
 )
 
 // Traverse Options.
 const (
 	// Iterate only over leaf nodes.
-	TRAVERSE_LEAF = 1
+	TraverseLeaf = 1
 
 	// Iterate only over non-leaf nodes.
-	TRAVERSE_NODE = 2
+	TraverseNode = 2
 
 	// Iterate over all nodes in the tree.
-	TRAVERSE_ALL = TRAVERSE_LEAF | TRAVERSE_NODE
+	TraverseAll = TraverseLeaf | TraverseNode
 )
 
 // These errors can be returned when iteration over the tree.

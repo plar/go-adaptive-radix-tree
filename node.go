@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-type prefix [MAX_PREFIX_LENGTH]byte
+type prefix [MaxPrefixLen]byte
 
 // Base part of all the various nodes, except leaf
 type node struct {
@@ -18,28 +18,28 @@ type node struct {
 // Node with 4 children
 type node4 struct {
 	node
-	keys     [NODE_4_MAX]byte
-	children [NODE_4_MAX]*artNode
+	keys     [Node4Max]byte
+	children [Node4Max]*artNode
 }
 
 // Node with 16 children
 type node16 struct {
 	node
-	keys     [NODE_16_MAX]byte
-	children [NODE_16_MAX]*artNode
+	keys     [Node16Max]byte
+	children [Node16Max]*artNode
 }
 
 // Node with 48 children
 type node48 struct {
 	node
-	keys     [NODE_256_MAX]byte
-	children [NODE_48_MAX]*artNode
+	keys     [Node256Max]byte
+	children [Node48Max]*artNode
 }
 
 // Node with 256 children
 type node256 struct {
 	node
-	children [NODE_256_MAX]*artNode
+	children [Node256Max]*artNode
 }
 
 // Leaf node with variable key length
@@ -56,7 +56,7 @@ type artNode struct {
 
 var nullNode *artNode = nil
 
-var node2string = []string{"LEAF", "NODE4", "NODE16", "NODE48", "NODE256"}
+var node2string = []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}
 
 func (k Kind) String() string {
 	return node2string[k]
@@ -91,14 +91,14 @@ func (an *artNode) Value() Value {
 
 func (an *artNode) shrinkThreshold() int {
 	switch an.kind {
-	case NODE_4:
-		return NODE_4_SHRINK
-	case NODE_16:
-		return NODE_16_SHRINK
-	case NODE_48:
-		return NODE_48_SHRINK
-	case NODE_256:
-		return NODE_256_SHRINK
+	case Node4:
+		return Node4Shrink
+	case Node16:
+		return Node16Shrink
+	case Node48:
+		return Node48Shrink
+	case Node256:
+		return Node256Shrink
 	}
 
 	return 0
@@ -106,14 +106,14 @@ func (an *artNode) shrinkThreshold() int {
 
 func (an *artNode) minChildren() int {
 	switch an.kind {
-	case NODE_4:
-		return NODE_4_MIN
-	case NODE_16:
-		return NODE_16_MIN
-	case NODE_48:
-		return NODE_48_MIN
-	case NODE_256:
-		return NODE_256_MIN
+	case Node4:
+		return Node4Min
+	case Node16:
+		return Node16Min
+	case Node48:
+		return Node48Min
+	case Node256:
+		return Node256Min
 	}
 
 	return 0
@@ -121,27 +121,27 @@ func (an *artNode) minChildren() int {
 
 func (an *artNode) maxChildren() int {
 	switch an.kind {
-	case NODE_4:
-		return NODE_4_MAX
-	case NODE_16:
-		return NODE_16_MAX
-	case NODE_48:
-		return NODE_48_MAX
-	case NODE_256:
-		return NODE_256_MAX
+	case Node4:
+		return Node4Max
+	case Node16:
+		return Node16Max
+	case Node48:
+		return Node48Max
+	case Node256:
+		return Node256Max
 	}
 
 	return 0
 }
 
 func (an *artNode) isLeaf() bool {
-	return an.kind == NODE_LEAF
+	return an.kind == Leaf
 }
 
 func (an *artNode) setPrefix(key Key, prefixLen int) *artNode {
 	node := an.node()
 	node.prefixLen = prefixLen
-	for i := 0; i < min(prefixLen, MAX_PREFIX_LENGTH); i++ {
+	for i := 0; i < min(prefixLen, MaxPrefixLen); i++ {
 		node.prefix[i] = key[i]
 	}
 	return an
@@ -156,7 +156,7 @@ func (l *leaf) match(key Key) bool {
 
 func (n *node) match(key Key, depth int) int /* mismatch index*/ {
 	idx := 0
-	limit := min(min(n.prefixLen, MAX_PREFIX_LENGTH), len(key)-depth)
+	limit := min(min(n.prefixLen, MaxPrefixLen), len(key)-depth)
 	for ; idx < limit; idx++ {
 		if n.prefix[idx] != key[idx+depth] {
 			return idx
@@ -168,7 +168,7 @@ func (n *node) match(key Key, depth int) int /* mismatch index*/ {
 func (an *artNode) matchDeep(key Key, depth int) int /* mismatch index*/ {
 	node := an.node()
 	mismatchIdx := node.match(key, depth)
-	if mismatchIdx < MAX_PREFIX_LENGTH {
+	if mismatchIdx < MaxPrefixLen {
 		return mismatchIdx
 	}
 
@@ -196,22 +196,22 @@ func replaceNode(oldNode *artNode, newNode *artNode) {
 // Find the minimum leaf under a artNode
 func (an *artNode) minimum() *leaf {
 	switch an.kind {
-	case NODE_LEAF:
+	case Leaf:
 		return an.leaf()
 
-	case NODE_4:
+	case Node4:
 		node := an.node4()
 		if node.children[0] != nil {
 			return node.children[0].minimum()
 		}
 
-	case NODE_16:
+	case Node16:
 		node := an.node16()
 		if node.children[0] != nil {
 			return node.children[0].minimum()
 		}
 
-	case NODE_48:
+	case Node48:
 		idx := 0
 		node := an.node48()
 		for node.keys[idx] == 0 {
@@ -221,7 +221,7 @@ func (an *artNode) minimum() *leaf {
 			return node.children[node.keys[idx]-1].minimum()
 		}
 
-	case NODE_256:
+	case Node256:
 		idx := 0
 		node := an.node256()
 		for node.children[idx] == nil {
@@ -238,18 +238,18 @@ func (an *artNode) minimum() *leaf {
 
 func (an *artNode) maximum() *leaf {
 	switch an.kind {
-	case NODE_LEAF:
+	case Leaf:
 		return an.leaf()
 
-	case NODE_4:
+	case Node4:
 		node := an.node4()
 		return node.children[node.numChildren-1].maximum()
 
-	case NODE_16:
+	case Node16:
 		node := an.node16()
 		return node.children[node.numChildren-1].maximum()
 
-	case NODE_48:
+	case Node48:
 		idx := 255
 		node := an.node48()
 		for node.keys[idx] == 0 {
@@ -257,7 +257,7 @@ func (an *artNode) maximum() *leaf {
 		}
 		return node.children[node.keys[idx]-1].maximum()
 
-	case NODE_256:
+	case Node256:
 		idx := 255
 		node := an.node256()
 		for node.children[idx] == nil {
@@ -272,7 +272,7 @@ func (an *artNode) maximum() *leaf {
 
 func (an *artNode) index(c byte) int {
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		node := an.node4()
 		for idx := 0; idx < node.numChildren; idx++ {
 			if node.keys[idx] == c {
@@ -280,20 +280,20 @@ func (an *artNode) index(c byte) int {
 			}
 		}
 
-	case NODE_16:
+	case Node16:
 		node := an.node16()
 		idx := sort.Search(int(node.numChildren), func(i int) bool { return node.keys[i] >= c })
 		if idx < len(node.keys) && node.keys[idx] == c {
 			return idx
 		}
 
-	case NODE_48:
+	case Node48:
 		node := an.node48()
 		if idx := int(node.keys[c]); idx > 0 {
 			return idx - 1
 		}
 
-	case NODE_256:
+	case Node256:
 		return int(c)
 	}
 
@@ -302,22 +302,22 @@ func (an *artNode) index(c byte) int {
 
 func (an *artNode) findChild(c byte) **artNode {
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		if idx := an.index(c); idx >= 0 {
 			return &an.node4().children[idx]
 		}
 
-	case NODE_16:
+	case Node16:
 		if idx := an.index(c); idx >= 0 {
 			return &an.node16().children[idx]
 		}
 
-	case NODE_48:
+	case Node48:
 		if idx := an.index(c); idx >= 0 {
 			return &an.node48().children[idx]
 		}
 
-	case NODE_256:
+	case Node256:
 		node := an.node256()
 		if child := node.children[c]; child != nil {
 			return &node.children[c]
@@ -354,7 +354,7 @@ func (an *artNode) leaf() *leaf {
 
 func (an *artNode) addChild(c byte, child *artNode) bool {
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		node := an.node4()
 		if node.numChildren < an.maxChildren() {
 			i := 0
@@ -380,7 +380,7 @@ func (an *artNode) addChild(c byte, child *artNode) bool {
 			return true
 		}
 
-	case NODE_16:
+	case Node16:
 		node := an.node16()
 		if node.numChildren < an.maxChildren() {
 			index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
@@ -399,7 +399,7 @@ func (an *artNode) addChild(c byte, child *artNode) bool {
 			return true
 		}
 
-	case NODE_48:
+	case Node48:
 		node := an.node48()
 		if node.numChildren < an.maxChildren() {
 			index := byte(0)
@@ -417,7 +417,7 @@ func (an *artNode) addChild(c byte, child *artNode) bool {
 			return true
 		}
 
-	case NODE_256:
+	case Node256:
 		node := an.node256()
 		node.numChildren++
 		node.children[c] = child
@@ -430,7 +430,7 @@ func (an *artNode) addChild(c byte, child *artNode) bool {
 func (an *artNode) deleteChild(c byte) bool {
 	numChildren := -1
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		node := an.node4()
 		if idx := an.index(c); idx >= 0 {
 			node.numChildren--
@@ -447,7 +447,7 @@ func (an *artNode) deleteChild(c byte) bool {
 		}
 		numChildren = node.numChildren
 
-	case NODE_16:
+	case Node16:
 		node := an.node16()
 		if idx := an.index(c); idx >= 0 {
 			node.numChildren--
@@ -463,7 +463,7 @@ func (an *artNode) deleteChild(c byte) bool {
 		}
 		numChildren = node.numChildren
 
-	case NODE_48:
+	case Node48:
 		node := an.node48()
 		if idx := an.index(c); idx >= 0 && node.children[idx] != nil {
 			node.children[idx] = nil
@@ -472,7 +472,7 @@ func (an *artNode) deleteChild(c byte) bool {
 		}
 		numChildren = node.numChildren
 
-	case NODE_256:
+	case Node256:
 		node := an.node256()
 		if idx := an.index(c); node.children[idx] != nil {
 			node.children[idx] = nil
@@ -501,7 +501,7 @@ func (an *artNode) copyMeta(src *artNode) *artNode {
 	d.numChildren = s.numChildren
 	d.prefixLen = s.prefixLen
 
-	for i, limit := 0, min(s.prefixLen, MAX_PREFIX_LENGTH); i < limit; i++ {
+	for i, limit := 0, min(s.prefixLen, MaxPrefixLen); i < limit; i++ {
 		d.prefix[i] = s.prefix[i]
 	}
 
@@ -510,7 +510,7 @@ func (an *artNode) copyMeta(src *artNode) *artNode {
 
 func (an *artNode) grow() *artNode {
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		node := factory.newNode16().copyMeta(an)
 
 		d := node.node16()
@@ -522,7 +522,7 @@ func (an *artNode) grow() *artNode {
 		}
 		return node
 
-	case NODE_16:
+	case Node16:
 		node := factory.newNode48().copyMeta(an)
 
 		d := node.node48()
@@ -534,7 +534,7 @@ func (an *artNode) grow() *artNode {
 		}
 		return node
 
-	case NODE_48:
+	case Node48:
 		node := factory.newNode256().copyMeta(an)
 
 		d := node.node256()
@@ -554,7 +554,7 @@ func (an *artNode) grow() *artNode {
 
 func (an *artNode) shrink() *artNode {
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		node4 := an.node4()
 		child := node4.children[0]
 		if child.isLeaf() {
@@ -562,27 +562,27 @@ func (an *artNode) shrink() *artNode {
 		}
 
 		curPrefixLen := node4.prefixLen
-		if curPrefixLen < MAX_PREFIX_LENGTH {
+		if curPrefixLen < MaxPrefixLen {
 			node4.prefix[curPrefixLen] = node4.keys[0]
 			curPrefixLen++
 		}
 
 		childNode := child.node()
-		if curPrefixLen < MAX_PREFIX_LENGTH {
-			childPrefixLen := min(childNode.prefixLen, MAX_PREFIX_LENGTH-curPrefixLen)
+		if curPrefixLen < MaxPrefixLen {
+			childPrefixLen := min(childNode.prefixLen, MaxPrefixLen-curPrefixLen)
 			for i := 0; i < childPrefixLen; i++ {
 				node4.prefix[curPrefixLen+i] = childNode.prefix[i]
 			}
 			curPrefixLen += childPrefixLen
 		}
 
-		for i := 0; i < min(curPrefixLen, MAX_PREFIX_LENGTH); i++ {
+		for i := 0; i < min(curPrefixLen, MaxPrefixLen); i++ {
 			childNode.prefix[i] = node4.prefix[i]
 		}
 		childNode.prefixLen += node4.prefixLen + 1
 		return child
 
-	case NODE_16:
+	case Node16:
 		node16 := an.node16()
 
 		newNode := factory.newNode4().copyMeta(an)
@@ -597,7 +597,7 @@ func (an *artNode) shrink() *artNode {
 		return newNode
 
 		return nil
-	case NODE_48:
+	case Node48:
 		node48 := an.node48()
 
 		newNode := factory.newNode16().copyMeta(an)
@@ -618,7 +618,7 @@ func (an *artNode) shrink() *artNode {
 
 		return newNode
 
-	case NODE_256:
+	case Node256:
 		node256 := an.node256()
 
 		newNode := factory.newNode48().copyMeta(an)

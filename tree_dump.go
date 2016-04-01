@@ -126,27 +126,27 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	ts.append(padHeader)
 	ts.append(fmt.Sprintf("%v (%p)\n", an.kind, an))
 	switch an.kind {
-	case NODE_4:
+	case Node4:
 		n := an.node()
 		nn := an.node4()
 		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
 
-	case NODE_16:
+	case Node16:
 		n := an.node()
 		nn := an.node16()
 		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
 
-	case NODE_48:
+	case Node48:
 		n := an.node()
 		nn := an.node48()
 		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
 
-	case NODE_256:
+	case Node256:
 		n := an.node()
 		nn := an.node256()
 		ts.node(pad, n.prefixLen, n.prefix[:], nil, nn.children[:], n.numChildren, depth)
 
-	case NODE_LEAF:
+	case Leaf:
 		n := an.leaf()
 		ts.append(pad).append(fmt.Sprintf("key: %v", n.key)).array(n.key[:]).append("\n")
 

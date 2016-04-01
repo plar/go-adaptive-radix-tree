@@ -18,31 +18,31 @@ func TestKeyCharAt(t *testing.T) {
 func TestNodeKind(t *testing.T) {
 	n4 := factory.newNode4()
 	assert.NotNil(t, n4)
-	assert.Equal(t, NODE_4, n4.kind)
+	assert.Equal(t, Node4, n4.kind)
 
 	n16 := factory.newNode16()
 	assert.NotNil(t, n16)
-	assert.Equal(t, NODE_16, n16.kind)
+	assert.Equal(t, Node16, n16.kind)
 
 	n48 := factory.newNode48()
 	assert.NotNil(t, n48)
-	assert.Equal(t, NODE_48, n48.kind)
+	assert.Equal(t, Node48, n48.kind)
 
 	n256 := factory.newNode256()
 	assert.NotNil(t, n256)
-	assert.Equal(t, NODE_256, n256.kind)
+	assert.Equal(t, Node256, n256.kind)
 
 	leaf := factory.newLeaf([]byte("key"), "value")
 	assert.NotNil(t, leaf)
-	assert.Equal(t, NODE_LEAF, leaf.kind)
+	assert.Equal(t, Leaf, leaf.kind)
 	assert.Equal(t, leaf.Key(), Key([]byte("key")))
 	assert.Equal(t, leaf.Value().(string), "value")
 
-	assert.Equal(t, "NODE4", n4.kind.String())
-	assert.Equal(t, "NODE16", n16.kind.String())
-	assert.Equal(t, "NODE48", n48.kind.String())
-	assert.Equal(t, "NODE256", n256.kind.String())
-	assert.Equal(t, "LEAF", leaf.kind.String())
+	assert.Equal(t, "Node4", n4.kind.String())
+	assert.Equal(t, "Node16", n16.kind.String())
+	assert.Equal(t, "Node48", n48.kind.String())
+	assert.Equal(t, "Node256", n256.kind.String())
+	assert.Equal(t, "Leaf", leaf.kind.String())
 
 	unknowNode := &artNode{kind: Kind(0xFF)}
 	assert.Nil(t, unknowNode.maximum())
@@ -52,7 +52,7 @@ func TestNodeKind(t *testing.T) {
 func TestLeaf(t *testing.T) {
 	leaf := factory.newLeaf([]byte("key"), "value")
 	assert.NotNil(t, leaf)
-	assert.Equal(t, NODE_LEAF, leaf.kind)
+	assert.Equal(t, Leaf, leaf.kind)
 
 	assert.False(t, leaf.leaf().match([]byte("unknown-key")))
 
@@ -85,8 +85,8 @@ func TestNodeSetPrefix(t *testing.T) {
 	assert.Equal(t, byte(1), node.prefix[0])
 	assert.Equal(t, byte(2), node.prefix[1])
 
-	n4.setPrefix(key, MAX_PREFIX_LENGTH)
-	assert.Equal(t, MAX_PREFIX_LENGTH, node.prefixLen)
+	n4.setPrefix(key, MaxPrefixLen)
+	assert.Equal(t, MaxPrefixLen, node.prefixLen)
 	assert.Equal(t, byte(1), node.prefix[0])
 	assert.Equal(t, byte(2), node.prefix[1])
 	assert.Equal(t, byte(3), node.prefix[2])
@@ -233,7 +233,7 @@ func TestNode16AddChild16PreserveSorted(t *testing.T) {
 
 func TestGrow(t *testing.T) {
 	nodes := []*artNode{factory.newNode4(), factory.newNode16(), factory.newNode48()}
-	expected := []Kind{NODE_16, NODE_48, NODE_256}
+	expected := []Kind{Node16, Node48, Node256}
 
 	for i, node := range nodes {
 		newNode := node.grow()
@@ -243,12 +243,12 @@ func TestGrow(t *testing.T) {
 
 func TestShrink(t *testing.T) {
 	nodes := []*artNode{factory.newNode256(), factory.newNode48(), factory.newNode16(), factory.newNode4()}
-	expected := []Kind{NODE_48, NODE_16, NODE_4, NODE_LEAF}
+	expected := []Kind{Node48, Node16, Node4, Leaf}
 
 	for i, node := range nodes {
 
 		for j := 0; j < node.minChildren(); j++ {
-			if node.kind != NODE_4 {
+			if node.kind != Node4 {
 				node.addChild(byte(i), factory.newNode4())
 			} else {
 				node.addChild(byte(i), factory.newLeaf(Key{byte(i)}, "value"))

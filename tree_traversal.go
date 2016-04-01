@@ -26,23 +26,23 @@ func traverseOptions(opts ...int) int {
 	for _, opt := range opts {
 		options |= opt
 	}
-	options &= TRAVERSE_ALL
+	options &= TraverseAll
 	if options == 0 {
 		// By default filter only leafs
-		options = TRAVERSE_LEAF
+		options = TraverseLeaf
 	}
 	return options
 }
 
 func traverseFilter(options int, callback Callback) Callback {
-	if options == TRAVERSE_ALL {
+	if options == TraverseAll {
 		return callback
 	}
 
 	return func(node Node) bool {
-		if options&TRAVERSE_LEAF == TRAVERSE_LEAF && node.Kind() == NODE_LEAF {
+		if options&TraverseLeaf == TraverseLeaf && node.Kind() == Leaf {
 			return callback(node)
-		} else if options&TRAVERSE_NODE == TRAVERSE_NODE && node.Kind() != NODE_LEAF {
+		} else if options&TraverseNode == TraverseNode && node.Kind() != Leaf {
 			return callback(node)
 		}
 		return true
@@ -64,7 +64,7 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 	}
 
 	switch current.kind {
-	case NODE_4:
+	case Node4:
 		node := current.node4()
 		for i, limit := 0, len(node.children); i < limit; i++ {
 			child := node.children[i]
@@ -73,7 +73,7 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 			}
 		}
 
-	case NODE_16:
+	case Node16:
 		node := current.node16()
 		for i, limit := 0, len(node.children); i < limit; i++ {
 			child := node.children[i]
@@ -82,7 +82,7 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 			}
 		}
 
-	case NODE_48:
+	case Node48:
 		node := current.node48()
 		for i, limit := 0, len(node.keys); i < limit; i++ {
 			idx := node.keys[byte(i)]
@@ -95,7 +95,7 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 			}
 		}
 
-	case NODE_256:
+	case Node256:
 		node := current.node256()
 		for i, limit := 0, len(node.children); i < limit; i++ {
 			child := node.children[i]
@@ -168,7 +168,7 @@ func (t *tree) Iterator(opts ...int) Iterator {
 		depthLevel: 0,
 		depth:      []*iteratorLevel{&iteratorLevel{t.root, 0}}}
 
-	if options&TRAVERSE_ALL == TRAVERSE_ALL {
+	if options&TraverseAll == TraverseAll {
 		return it
 	}
 
@@ -215,7 +215,7 @@ func (ti *iterator) next() {
 		childIdx := ti.depth[ti.depthLevel].childIdx
 
 		switch nextNode.kind {
-		case NODE_4:
+		case Node4:
 			node := nextNode.node4()
 			i, nodeLimit := childIdx, len(node.children)
 			for ; i < nodeLimit; i++ {
@@ -227,7 +227,7 @@ func (ti *iterator) next() {
 				}
 			}
 
-		case NODE_16:
+		case Node16:
 			node := nextNode.node16()
 			i, nodeLimit := childIdx, len(node.children)
 			for ; i < nodeLimit; i++ {
@@ -239,7 +239,7 @@ func (ti *iterator) next() {
 				}
 			}
 
-		case NODE_48:
+		case Node48:
 			node := nextNode.node48()
 			i, nodeLimit := childIdx, len(node.keys)
 			for ; i < nodeLimit; i++ {
@@ -255,7 +255,7 @@ func (ti *iterator) next() {
 				}
 			}
 
-		case NODE_256:
+		case Node256:
 			node := nextNode.node256()
 			i, nodeLimit := childIdx, len(node.children)
 			for ; i < nodeLimit; i++ {
@@ -301,9 +301,9 @@ func (bti *bufferedIterator) HasNext() bool {
 		if bti.err != nil {
 			return true
 		}
-		if bti.options&TRAVERSE_LEAF == TRAVERSE_LEAF && bti.nextNode.Kind() == NODE_LEAF {
+		if bti.options&TraverseLeaf == TraverseLeaf && bti.nextNode.Kind() == Leaf {
 			return true
-		} else if bti.options&TRAVERSE_NODE == TRAVERSE_NODE && bti.nextNode.Kind() != NODE_LEAF {
+		} else if bti.options&TraverseNode == TraverseNode && bti.nextNode.Kind() != Leaf {
 			return true
 		}
 	}

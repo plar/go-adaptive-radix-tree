@@ -39,25 +39,25 @@ func newObjFactory() nodeFactory {
 
 // Simple obj factory implementation
 func (f *objFactory) newNode4() *artNode {
-	return &artNode{kind: NODE_4, ref: unsafe.Pointer(new(node4))}
+	return &artNode{kind: Node4, ref: unsafe.Pointer(new(node4))}
 }
 
 func (f *objFactory) newNode16() *artNode {
-	return &artNode{kind: NODE_16, ref: unsafe.Pointer(&node16{})}
+	return &artNode{kind: Node16, ref: unsafe.Pointer(&node16{})}
 }
 
 func (f *objFactory) newNode48() *artNode {
-	return &artNode{kind: NODE_48, ref: unsafe.Pointer(&node48{})}
+	return &artNode{kind: Node48, ref: unsafe.Pointer(&node48{})}
 }
 
 func (f *objFactory) newNode256() *artNode {
-	return &artNode{kind: NODE_256, ref: unsafe.Pointer(&node256{})}
+	return &artNode{kind: Node256, ref: unsafe.Pointer(&node256{})}
 }
 
 func (f *objFactory) newLeaf(key Key, value interface{}) *artNode {
 	clonedKey := make(Key, len(key))
 	copy(clonedKey, key)
-	return &artNode{kind: NODE_LEAF, ref: unsafe.Pointer(&leaf{key: clonedKey, value: value})}
+	return &artNode{kind: Leaf, ref: unsafe.Pointer(&leaf{key: clonedKey, value: value})}
 }
 
 func (f *objFactory) releaseNode(an *artNode) {
@@ -80,7 +80,7 @@ func (f *objFactory) releaseNode(an *artNode) {
 // 	an.ref = ref
 
 // 	switch kind {
-// 	case NODE_4, NODE_16, NODE_48, NODE_256:
+// 	case Node4, Node16, Node48, Node256:
 // 		n := an.node()
 // 		n.numChildren = 0
 // 		n.prefixLen = 0
@@ -90,19 +90,19 @@ func (f *objFactory) releaseNode(an *artNode) {
 // 	}
 
 // 	switch an.kind {
-// 	case NODE_4:
+// 	case Node4:
 // 		n := an.node4()
 // 		for i := range n.keys {
 // 			n.keys[i] = 0
 // 			n.children[i] = nil
 // 		}
-// 	case NODE_16:
+// 	case Node16:
 // 		n := an.node16()
 // 		for i := range n.keys {
 // 			n.keys[i] = 0
 // 			n.children[i] = nil
 // 		}
-// 	case NODE_48:
+// 	case Node48:
 // 		n := an.node48()
 // 		for i := range n.keys {
 // 			n.keys[i] = 0
@@ -110,12 +110,12 @@ func (f *objFactory) releaseNode(an *artNode) {
 // 		for i := range n.children {
 // 			n.children[i] = nil
 // 		}
-// 	case NODE_256:
+// 	case Node256:
 // 		n := an.node256()
 // 		for i := range n.children {
 // 			n.children[i] = nil
 // 		}
-// 	case NODE_LEAF:
+// 	case Leaf:
 // 		n := an.leaf()
 // 		n.key = nil
 // 		n.value = nil
@@ -127,28 +127,28 @@ func (f *objFactory) releaseNode(an *artNode) {
 // func (f *poolObjFactory) newNode4() *artNode {
 // 	an := f.artNodePool.Get().(*artNode)
 // 	node := f.node4Pool.Get().(*node4)
-// 	initArtNode(an, NODE_4, unsafe.Pointer(node))
+// 	initArtNode(an, Node4, unsafe.Pointer(node))
 // 	return an
 // }
 
 // func (f *poolObjFactory) newNode16() *artNode {
 // 	an := f.artNodePool.Get().(*artNode)
 // 	node := f.node16Pool.Get().(*node16)
-// 	initArtNode(an, NODE_16, unsafe.Pointer(node))
+// 	initArtNode(an, Node16, unsafe.Pointer(node))
 // 	return an
 // }
 
 // func (f *poolObjFactory) newNode48() *artNode {
 // 	an := f.artNodePool.Get().(*artNode)
 // 	node := f.node48Pool.Get().(*node48)
-// 	initArtNode(an, NODE_48, unsafe.Pointer(node))
+// 	initArtNode(an, Node48, unsafe.Pointer(node))
 // 	return an
 // }
 
 // func (f *poolObjFactory) newNode256() *artNode {
 // 	an := f.artNodePool.Get().(*artNode)
 // 	node := f.node256Pool.Get().(*node256)
-// 	initArtNode(an, NODE_256, unsafe.Pointer(node))
+// 	initArtNode(an, Node256, unsafe.Pointer(node))
 // 	return an
 // }
 
@@ -156,7 +156,7 @@ func (f *objFactory) releaseNode(an *artNode) {
 // 	an := f.artNodePool.Get().(*artNode)
 // 	node := f.leafPool.Get().(*leaf)
 
-// 	initArtNode(an, NODE_LEAF, unsafe.Pointer(node))
+// 	initArtNode(an, Leaf, unsafe.Pointer(node))
 
 // 	clonedKey := make(Key, len(key))
 // 	copy(clonedKey, key)
@@ -175,19 +175,19 @@ func (f *objFactory) releaseNode(an *artNode) {
 // 	// return
 
 // 	switch an.kind {
-// 	case NODE_4:
+// 	case Node4:
 // 		f.node4Pool.Put(an.node4())
 
-// 	case NODE_16:
+// 	case Node16:
 // 		f.node16Pool.Put(an.node16())
 
-// 	case NODE_48:
+// 	case Node48:
 // 		f.node48Pool.Put(an.node48())
 
-// 	case NODE_256:
+// 	case Node256:
 // 		f.node256Pool.Put(an.node256())
 
-// 	case NODE_LEAF:
+// 	case Leaf:
 // 		f.leafPool.Put(an.leaf())
 // 	}
 

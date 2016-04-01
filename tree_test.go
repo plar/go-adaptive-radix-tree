@@ -90,7 +90,7 @@ func TestTreeUpdate(t *testing.T) {
 	assert.Nil(t, ov)
 	assert.False(t, updated)
 	assert.Equal(t, 1, tree.size)
-	assert.Equal(t, Kind(NODE_LEAF), tree.root.kind)
+	assert.Equal(t, Leaf, tree.root.kind)
 
 	v, found := tree.Search(key)
 	assert.True(t, found)
@@ -141,9 +141,9 @@ func TestTreeInsertAndGrowToBiggerNode(t *testing.T) {
 		totalNodes byte
 		expected   Kind
 	}{
-		{5, NODE_16},
-		{17, NODE_48},
-		{49, NODE_256},
+		{5, Node16},
+		{17, Node48},
+		{49, Node256},
 	}
 
 	for _, data := range testData {
@@ -216,7 +216,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			[]string{"test1", "test2"},
 			[]string{"test2"},
 			1,
-			NODE_LEAF},
+			Leaf},
 		{
 			"Insert 2 Delete 2",
 			[]string{"test1", "test2"},
@@ -228,7 +228,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			[]string{"1", "2", "3", "4", "5"},
 			[]string{"1"},
 			4,
-			NODE_4},
+			Node4},
 		{
 			"Insert 5 Delete 5",
 			[]string{"1", "2", "3", "4", "5"},
@@ -240,7 +240,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			[]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
 			[]string{"2"},
 			16,
-			NODE_16},
+			Node16},
 		{
 			"Insert 17 Delete 17",
 			[]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
@@ -256,7 +256,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			}),
 			[]byte{byte(2)},
 			48,
-			NODE_48},
+			Node48},
 		{
 			"Insert 49 Delete 49",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -285,7 +285,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			}),
 			[]byte{2},
 			255,
-			NODE_256},
+			Node256},
 		{
 			"Insert 256 Delete 256",
 			treeTestCustom(func(data *testData, tree *tree) {
@@ -389,7 +389,7 @@ func TestInsertTwoAndDeleteOne(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, tree.size)
-	assert.Equal(t, NODE_LEAF, tree.root.kind)
+	assert.Equal(t, Leaf, tree.root.kind)
 }
 
 func TestInsertTwoAndDeleteTwo(t *testing.T) {
@@ -424,21 +424,21 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 
 	assert.Equal(t, 2, tree.size)
 	assert.Equal(t, traversal[0], tree.root)
 	assert.Nil(t, traversal[0].Key())
 	assert.Nil(t, traversal[0].Value())
-	assert.NotEqual(t, NODE_LEAF, traversal[0].Kind())
+	assert.NotEqual(t, Leaf, traversal[0].Kind())
 
 	assert.Equal(t, traversal[1].Key(), Key("1"))
 	assert.Equal(t, traversal[1].Value(), 1)
-	assert.Equal(t, NODE_LEAF, traversal[1].Kind())
+	assert.Equal(t, Leaf, traversal[1].Kind())
 
 	assert.Equal(t, traversal[2].Key(), Key("2"))
 	assert.Equal(t, traversal[2].Value(), 2)
-	assert.Equal(t, NODE_LEAF, traversal[2].Kind())
+	assert.Equal(t, Leaf, traversal[2].Kind())
 }
 
 func TestTreeTraversalNode48(t *testing.T) {
@@ -452,16 +452,16 @@ func TestTreeTraversalNode48(t *testing.T) {
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 
 	// Order should be Node48, then the rest of the keys in sorted order
 	assert.Equal(t, 48, tree.size)
 	assert.Equal(t, traversal[0], tree.root)
-	assert.Equal(t, NODE_48, traversal[0].Kind())
+	assert.Equal(t, Node48, traversal[0].Kind())
 
 	for i := 1; i < 48; i++ {
 		assert.Equal(t, traversal[i].Key(), Key{byte(i)})
-		assert.Equal(t, NODE_LEAF, traversal[i].Kind())
+		assert.Equal(t, Leaf, traversal[i].Kind())
 	}
 }
 
@@ -482,7 +482,7 @@ func TestTreeTraversalCancel(t *testing.T) {
 		nodes = append(nodes, node)
 		curNode++
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 
 	assert.Equal(t, 5, len(nodes))
 
@@ -498,19 +498,19 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 	stats := treeStats{}
 	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
 }
@@ -575,7 +575,7 @@ func TestTreeTraversalPrefix(t *testing.T) {
 
 		actual := []string{}
 		tree.ForEachPrefix(Key(d.keyPrefix), func(node Node) bool {
-			if node.Kind() != NODE_LEAF {
+			if node.Kind() != Leaf {
 				return true
 			}
 			actual = append(actual, string(node.Key()))
@@ -596,7 +596,7 @@ func TestTreeTraversalPrefixWords(t *testing.T) {
 	}
 
 	tree.ForEachPrefix(Key("antis"), func(node Node) bool {
-		if node.Kind() != NODE_LEAF {
+		if node.Kind() != Leaf {
 			return true
 		}
 
@@ -613,12 +613,12 @@ func TestTreeIterator(t *testing.T) {
 	tree.Insert(Key("2"), []byte{2})
 	tree.Insert(Key("1"), []byte{1})
 
-	it := tree.Iterator(TRAVERSE_ALL)
+	it := tree.Iterator(TraverseAll)
 	assert.NotNil(t, it)
 	assert.True(t, it.HasNext())
 	n4, err := it.Next()
 	assert.NoError(t, err)
-	assert.Equal(t, NODE_4, n4.Kind())
+	assert.Equal(t, Node4, n4.Kind())
 
 	assert.True(t, it.HasNext())
 	v1, err := it.Next()
@@ -642,7 +642,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	tree.Insert(Key("2"), []byte{2})
 	tree.Insert(Key("1"), []byte{1})
 
-	it1 := tree.Iterator(TRAVERSE_ALL)
+	it1 := tree.Iterator(TraverseAll)
 	assert.NotNil(t, it1)
 	assert.True(t, it1.HasNext())
 
@@ -652,7 +652,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	assert.Nil(t, bad)
 	assert.Equal(t, ErrConcurrentModification, err)
 
-	it2 := tree.Iterator(TRAVERSE_ALL)
+	it2 := tree.Iterator(TraverseAll)
 	assert.NotNil(t, it2)
 	assert.True(t, it2.HasNext())
 
@@ -671,18 +671,18 @@ func TestTreeIterateWordsStats(t *testing.T) {
 
 	stats := treeStats{}
 
-	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
+	for it := tree.Iterator(TraverseAll); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 	}
@@ -693,33 +693,33 @@ func TestTreeIterateWordsStats(t *testing.T) {
 	for it := tree.Iterator(); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 	}
 	assert.Equal(t, treeStats{235886, 0, 0, 0, 0}, stats)
 
 	stats = treeStats{}
-	for it := tree.Iterator(TRAVERSE_NODE); it.HasNext(); {
+	for it := tree.Iterator(TraverseNode); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 	}
@@ -782,7 +782,7 @@ func TestTreeAPI(t *testing.T) {
 	assert.Nil(t, value)
 	assert.False(t, found)
 
-	it := tree.Iterator(TRAVERSE_ALL)
+	it := tree.Iterator(TraverseAll)
 	assert.NotNil(t, it)
 	assert.False(t, it.HasNext())
 	_, err := it.Next()
@@ -819,7 +819,7 @@ func TestTreeAPI(t *testing.T) {
 		return true
 	})
 
-	it = tree.Iterator(TRAVERSE_ALL)
+	it = tree.Iterator(TraverseAll)
 	assert.NotNil(t, it)
 	assert.True(t, it.HasNext())
 	next, err := it.Next()
@@ -887,18 +887,18 @@ func BenchmarkTreeIteratorWords(b *testing.B) {
 	b.ResetTimer()
 
 	stats := treeStats{}
-	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
+	for it := tree.Iterator(TraverseAll); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 	}
@@ -916,55 +916,55 @@ func BenchmarkTreeForEachWords(b *testing.B) {
 	stats := treeStats{}
 	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
 
 	stats = treeStats{}
 	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 		return true
-	}, TRAVERSE_LEAF)
+	}, TraverseLeaf)
 	assert.Equal(b, treeStats{235886, 0, 0, 0, 0}, stats)
 
 	stats = treeStats{}
 	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 		return true
-	}, TRAVERSE_NODE)
+	}, TraverseNode)
 	assert.Equal(b, treeStats{0, 111616, 12181, 458, 1}, stats)
 }
 
@@ -1002,18 +1002,18 @@ func BenchmarkTreeIteratorUUIDs(b *testing.B) {
 	b.ResetTimer()
 
 	stats := treeStats{}
-	for it := tree.Iterator(TRAVERSE_ALL); it.HasNext(); {
+	for it := tree.Iterator(TraverseAll); it.HasNext(); {
 		node, _ := it.Next()
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 	}
@@ -1031,18 +1031,18 @@ func BenchmarkTreeForEachUUIDs(b *testing.B) {
 	stats := treeStats{}
 	tree.ForEach(func(node Node) bool {
 		switch node.Kind() {
-		case NODE_4:
+		case Node4:
 			stats.node4Count++
-		case NODE_16:
+		case Node16:
 			stats.node16Count++
-		case NODE_48:
+		case Node48:
 			stats.node48Count++
-		case NODE_256:
+		case Node256:
 			stats.node256Count++
-		case NODE_LEAF:
+		case Leaf:
 			stats.leafCount++
 		}
 		return true
-	}, TRAVERSE_ALL)
+	}, TraverseAll)
 	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
 }
