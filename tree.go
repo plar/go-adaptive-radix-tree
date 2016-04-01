@@ -1,30 +1,11 @@
 package art
 
-import (
-	"errors"
-)
-
 type tree struct {
 	// version field is updated by each tree modification
 	version int
 
 	root *artNode
 	size int
-}
-
-type iteratorLevel struct {
-	node     *artNode
-	childIdx int
-}
-
-type iterator struct {
-	// tree's version
-	version int
-
-	tree       *tree
-	nextNode   *artNode
-	depthLevel int
-	depth      []*iteratorLevel
 }
 
 func (t *tree) Insert(key Key, value Value) (Value, bool) {
@@ -48,34 +29,34 @@ func (t *tree) Delete(key Key) (Value, bool) {
 }
 
 func (t *tree) Search(key Key) (Value, bool) {
-	node := t.root
+	current := t.root
 
-	prefixLen := 0
+	//prefixLen := 0
 	depth := 0
 
-	for node != nil {
-		if node.kind == NODE_LEAF {
-			leaf := node.Leaf()
-			if leaf.Match(key) {
+	for current != nil {
+		if current.isLeaf() {
+			leaf := current.leaf()
+			if leaf.match(key) {
 				return leaf.value, true
 			}
 			return nil, false
 		}
 
-		nodeBase := node.BaseNode()
-		if nodeBase.prefixLen > 0 {
-			prefixLen = nodeBase.CheckPrefix(key, depth)
-			if prefixLen != min(MAX_PREFIX_LENGTH, nodeBase.prefixLen) {
+		node := current.node()
+		if node.prefixLen > 0 {
+			match, _ := node.match(key, depth)
+			if !match {
 				return nil, false
 			}
-			depth += nodeBase.prefixLen
+			depth += node.prefixLen
 		}
 
-		next := node.FindChild(key.charAt(depth))
+		next := current.findChild(key.charAt(depth))
 		if *next != nil {
-			node = *next
+			current = *next
 		} else {
-			node = nil
+			current = nil
 		}
 		depth++
 	}
@@ -88,11 +69,8 @@ func (t *tree) Minimum() (value Value, found bool) {
 		return nil, false
 	}
 
-	leaf := t.root.Minimum()
-	if leaf != nil {
-		return leaf.value, true
-	}
-	return nil, false
+	leaf := t.root.minimum()
+	return leaf.value, true
 }
 
 func (t *tree) Maximum() (value Value, found bool) {
@@ -100,11 +78,8 @@ func (t *tree) Maximum() (value Value, found bool) {
 		return nil, false
 	}
 
-	leaf := t.root.Maximum()
-	if leaf != nil {
-		return leaf.value, true
-	}
-	return nil, false
+	leaf := t.root.maximum()
+	return leaf.value, true
 }
 
 func (t *tree) Size() int {
@@ -115,259 +90,74 @@ func (t *tree) Size() int {
 	return t.size
 }
 
-func (t *tree) ForEach(callback Callback) {
-	if t == nil || t.root == nil {
-		return
-	}
-
-	t.walker(t.root, callback)
-}
-
-func (t *tree) Iterator() Iterator {
-
-	ti := &iterator{
-		version:    t.version,
-		tree:       t,
-		nextNode:   t.root,
-		depthLevel: 0,
-		depth:      []*iteratorLevel{&iteratorLevel{t.root, 0}}}
-	return ti
-}
-
-func (ti *iterator) checkConcurrentModification() error {
-	if ti.version == ti.tree.version {
-		return nil
-	}
-
-	return errors.New("Concurrent modification has been detected")
-}
-
-func (ti *iterator) HasNext() bool {
-	return ti != nil && ti.nextNode != nil
-}
-
-func (ti *iterator) Next() (Node, error) {
-	if !ti.HasNext() {
-		return nil, errors.New("There are no more nodes in the tree")
-	}
-
-	err := ti.checkConcurrentModification()
-	if err != nil {
-		return nil, err
-	}
-
-	cur := ti.nextNode
-	ti.next()
-	return cur, nil
-}
-
-func (ti *iterator) next() {
-	for {
-		var otherNode *artNode = nil
-		otherChildIdx := -1
-
-		nextNode := ti.depth[ti.depthLevel].node
-		childIdx := ti.depth[ti.depthLevel].childIdx
-
-		switch nextNode.kind {
-		case NODE_4:
-			node := nextNode.Node4()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
-
-		case NODE_16:
-			node := nextNode.Node16()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
-
-		case NODE_48:
-			node := nextNode.Node48()
-			i, nodeLimit := childIdx, len(node.keys)
-			for ; i < nodeLimit; i++ {
-				idx := node.keys[byte(i)]
-				if idx <= 0 {
-					continue
-				}
-				child := node.children[idx-1]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
-
-		case NODE_256:
-			node := nextNode.Node256()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
-		}
-
-		if otherNode == nil {
-			if ti.depthLevel > 0 {
-				// return to previous level
-				ti.depthLevel--
-			} else {
-				ti.nextNode = nil // done!
-				return
-			}
-		} else {
-			// star from the next when we come back from the child node
-			ti.depth[ti.depthLevel].childIdx = otherChildIdx + 1
-			ti.nextNode = otherNode
-
-			// make sure that w we have enough space for levels
-			if ti.depthLevel+1 >= cap(ti.depth) {
-				newDepthLevel := make([]*iteratorLevel, ti.depthLevel+2)
-				copy(newDepthLevel, ti.depth)
-				ti.depth = newDepthLevel
-			}
-
-			ti.depthLevel++
-			ti.depth[ti.depthLevel] = &iteratorLevel{otherNode, 0}
-			return
-		}
-	}
-}
-
-func (t *tree) walker(current *artNode, callback Callback) {
-	if current == nil {
-		return
-	}
-
-	if !callback(current) {
-		return
-	}
-
-	switch current.kind {
-	case NODE_4:
-		node := current.Node4()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.walker(child, callback)
-			}
-		}
-
-	case NODE_16:
-		node := current.Node16()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.walker(child, callback)
-			}
-		}
-
-	case NODE_48:
-		node := current.Node48()
-		for i, limit := 0, len(node.keys); i < limit; i++ {
-			idx := node.keys[byte(i)]
-			if idx <= 0 {
-				continue
-			}
-			child := node.children[idx-1]
-			if child != nil {
-				t.walker(child, callback)
-			}
-		}
-
-	case NODE_256:
-		node := current.Node256()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.walker(child, callback)
-			}
-		}
-	}
-}
-
 func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
-	node := *curNode
-	if node == nil {
+	current := *curNode
+	if current == nil {
 		replaceRef(curNode, factory.newLeaf(key, value))
 		return nil, false
 	}
 
-	if node.kind == NODE_LEAF {
-		leaf := node.Leaf()
+	if current.isLeaf() {
+		leaf := current.leaf()
 
 		// update exists value
-		if leaf.Match(key) {
+		if leaf.match(key) {
 			oldValue := leaf.value
 			leaf.value = value
 			return oldValue, true
 		}
 
-		// new value, split the leaf newNode into a node4
+		// new value, split the leaf into new node4
 		newLeaf := factory.newLeaf(key, value)
-		leaf2 := newLeaf.Leaf()
-		lcp := t.longestCommonPrefix(leaf, leaf2, depth)
+		leaf2 := newLeaf.leaf()
+		leafsLCP := t.longestCommonPrefix(leaf, leaf2, depth)
 
 		newNode := factory.newNode4()
-		newNode.SetPrefix(key[depth:], lcp)
-		depth += lcp
+		newNode.setPrefix(key[depth:], leafsLCP)
+		depth += leafsLCP
 
-		newNode.AddChild(leaf.key.charAt(depth), node)
-		newNode.AddChild(leaf2.key.charAt(depth), newLeaf)
+		newNode.addChild(leaf.key.charAt(depth), current)
+		newNode.addChild(leaf2.key.charAt(depth), newLeaf)
 		replaceRef(curNode, newNode)
 		return nil, false
 	}
 
-	nodeBase := node.BaseNode()
-	if nodeBase.prefixLen > 0 {
-		prefixDiff := node.PrefixMismatch(key, depth)
-		if prefixDiff >= nodeBase.prefixLen {
-			depth += nodeBase.prefixLen
+	node := current.node()
+	if node.prefixLen > 0 {
+
+		prefixMismatchIdx := current.matchDeep(key, depth)
+		if prefixMismatchIdx >= node.prefixLen {
+			depth += node.prefixLen
 			goto NEXT_NODE
 		}
+
 		newNode := factory.newNode4()
-		newNodeBase := newNode.BaseNode()
-		newNodeBase.prefixLen = prefixDiff
-		for j := 0; j < min(MAX_PREFIX_LENGTH, prefixDiff); j++ {
-			newNodeBase.prefix[j] = nodeBase.prefix[j]
+		node4 := newNode.node4()
+		node4.prefixLen = prefixMismatchIdx
+		for i := 0; i < min(prefixMismatchIdx, MAX_PREFIX_LENGTH); i++ {
+			node4.prefix[i] = node.prefix[i]
 		}
 
-		if nodeBase.prefixLen <= MAX_PREFIX_LENGTH {
-			newNode.AddChild(nodeBase.prefix[prefixDiff], node)
-			nodeBase.prefixLen -= (prefixDiff + 1)
+		if node.prefixLen <= MAX_PREFIX_LENGTH {
+			node.prefixLen -= (prefixMismatchIdx + 1)
+			newNode.addChild(node.prefix[prefixMismatchIdx], current)
 
-			for j, limit := 0, min(MAX_PREFIX_LENGTH, nodeBase.prefixLen); j < limit; j++ {
-				nodeBase.prefix[j] = nodeBase.prefix[prefixDiff+1+j]
+			for i, limit := 0, min(node.prefixLen, MAX_PREFIX_LENGTH); i < limit; i++ {
+				node.prefix[i] = node.prefix[prefixMismatchIdx+i+1]
 			}
 
 		} else {
-			nodeBase.prefixLen -= (prefixDiff + 1)
-			leaf := node.Minimum()
-			newNode.AddChild(leaf.key.charAt(depth+prefixDiff), node)
+			node.prefixLen -= (prefixMismatchIdx + 1)
+			leaf := current.minimum()
+			newNode.addChild(leaf.key.charAt(depth+prefixMismatchIdx), current)
 
-			for j, limit := 0, min(MAX_PREFIX_LENGTH, nodeBase.prefixLen); j < limit; j++ {
-				nodeBase.prefix[j] = leaf.key.charAt(depth + prefixDiff + 1 + j)
+			for i, limit := 0, min(node.prefixLen, MAX_PREFIX_LENGTH); i < limit; i++ {
+				node.prefix[i] = leaf.key.charAt(depth + prefixMismatchIdx + i + 1)
 			}
 		}
 
 		// Insert the new leaf
-		newNode.AddChild(key.charAt(depth+prefixDiff), factory.newLeaf(key, value))
+		newNode.addChild(key.charAt(depth+prefixMismatchIdx), factory.newLeaf(key, value))
 		replaceRef(curNode, newNode)
 		return nil, false
 	}
@@ -375,13 +165,13 @@ func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth in
 NEXT_NODE:
 
 	// Find a child to recursive to
-	next := node.FindChild(key.charAt(depth))
+	next := current.findChild(key.charAt(depth))
 	if *next != nil {
 		return t.recursiveInsert(next, key, value, depth+1)
 	}
 
 	// No Child, artNode goes with us
-	node.AddChild(key.charAt(depth), factory.newLeaf(key, value))
+	current.addChild(key.charAt(depth), factory.newLeaf(key, value))
 	return nil, false
 }
 
@@ -390,39 +180,36 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 		return nil, false
 	}
 
-	node := *curNode
+	current := *curNode
 
-	if node.kind == NODE_LEAF {
-		leaf := node.Leaf()
-		if leaf.Match(key) {
+	if current.isLeaf() {
+		leaf := current.leaf()
+		if leaf.match(key) {
 			replaceRef(curNode, nil)
-
 			return leaf.value, true
 		}
-
 		return nil, false
 	}
 
-	nodeBase := node.BaseNode()
-	if nodeBase.prefixLen > 0 {
-
-		prefixLen := nodeBase.CheckPrefix(key, depth)
-		if prefixLen != min(MAX_PREFIX_LENGTH, nodeBase.prefixLen) {
+	node := current.node()
+	if node.prefixLen > 0 {
+		match, _ := node.match(key, depth)
+		if !match {
 			return nil, false
 		}
 
-		depth += nodeBase.prefixLen
+		depth += node.prefixLen
 	}
 
-	next := node.FindChild(key.charAt(depth))
+	next := current.findChild(key.charAt(depth))
 	if *next == nil {
 		return nil, false
 	}
 
-	if (*next).kind == NODE_LEAF {
-		leaf := (*next).Leaf()
-		if leaf.Match(key) {
-			node.DeleteChild(key.charAt(depth))
+	if (*next).isLeaf() {
+		leaf := (*next).leaf()
+		if leaf.match(key) {
+			current.deleteChild(key.charAt(depth))
 			return leaf.value, true
 		}
 		return nil, false
