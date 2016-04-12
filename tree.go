@@ -8,6 +8,9 @@ type tree struct {
 	size int
 }
 
+// make sure that tree implements all methods from the Tree interface
+var _ Tree = &tree{}
+
 func (t *tree) Insert(key Key, value Value) (Value, bool) {
 	oldValue, updated := t.recursiveInsert(&t.root, key, value, 0)
 	if !updated {

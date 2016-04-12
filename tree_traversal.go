@@ -166,7 +166,7 @@ func (t *tree) Iterator(opts ...int) Iterator {
 		tree:       t,
 		nextNode:   t.root,
 		depthLevel: 0,
-		depth:      []*iteratorLevel{&iteratorLevel{t.root, 0}}}
+		depth:      []*iteratorLevel{{t.root, 0}}}
 
 	if options&TraverseAll == TraverseAll {
 		return it
@@ -206,9 +206,22 @@ func (ti *iterator) Next() (Node, error) {
 	return cur, nil
 }
 
+func nextChild(childIdx int, children []*artNode) (otherChildIdx int, otherNode *artNode) {
+	otherChildIdx, otherNode = -1, nil
+	i, nodeLimit := childIdx, len(children)
+	for ; i < nodeLimit; i++ {
+		child := children[i]
+		if child != nil {
+			otherChildIdx, otherNode = i, child
+			break
+		}
+	}
+	return
+}
+
 func (ti *iterator) next() {
 	for {
-		var otherNode *artNode = nil
+		var otherNode *artNode
 		otherChildIdx := -1
 
 		nextNode := ti.depth[ti.depthLevel].node
@@ -216,28 +229,10 @@ func (ti *iterator) next() {
 
 		switch nextNode.kind {
 		case Node4:
-			node := nextNode.node4()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
+			otherChildIdx, otherNode = nextChild(childIdx, nextNode.node4().children[:])
 
 		case Node16:
-			node := nextNode.node16()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
+			otherChildIdx, otherNode = nextChild(childIdx, nextNode.node16().children[:])
 
 		case Node48:
 			node := nextNode.node48()
@@ -256,16 +251,7 @@ func (ti *iterator) next() {
 			}
 
 		case Node256:
-			node := nextNode.node256()
-			i, nodeLimit := childIdx, len(node.children)
-			for ; i < nodeLimit; i++ {
-				child := node.children[i]
-				if child != nil {
-					otherChildIdx = i
-					otherNode = child
-					break
-				}
-			}
+			otherChildIdx, otherNode = nextChild(childIdx, nextNode.node256().children[:])
 		}
 
 		if otherNode == nil {

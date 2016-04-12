@@ -54,7 +54,8 @@ type artNode struct {
 	ref  unsafe.Pointer
 }
 
-var nullNode *artNode = nil
+//
+var nullNode *artNode
 
 var node2string = []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}
 
@@ -594,10 +595,8 @@ func (an *artNode) shrink() *artNode {
 			node4.children[i] = node16.children[i]
 			node4.numChildren++
 		}
-
 		return newNode
 
-		return nil
 	case Node48:
 		node48 := an.node48()
 
@@ -616,7 +615,6 @@ func (an *artNode) shrink() *artNode {
 				node16.numChildren++
 			}
 		}
-
 		return newNode
 
 	case Node256:
@@ -633,7 +631,6 @@ func (an *artNode) shrink() *artNode {
 				node48.numChildren++
 			}
 		}
-
 		return newNode
 	}
 	return nil

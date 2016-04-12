@@ -4,11 +4,11 @@ import "errors"
 
 // A constant exposing all node types.
 const (
-	Leaf    = Kind(0)
-	Node4   = Kind(1)
-	Node16  = Kind(2)
-	Node48  = Kind(3)
-	Node256 = Kind(4)
+	Leaf    Kind = 0
+	Node4   Kind = 1
+	Node16  Kind = 2
+	Node48  Kind = 3
+	Node256 Kind = 4
 )
 
 // Traverse Options.
@@ -29,20 +29,20 @@ var (
 	ErrNoMoreNodes            = errors.New("There are no more nodes in the tree")
 )
 
-// Node Kind type.
+// Kind is a node type.
 type Kind int
 
-// Leaf Key Type.
+// Key Type.
 type Key []byte
 
-// Leaf Value type.
+// Value type.
 type Value interface{}
 
-// The callback function.
+// Callback function type for tree traversal.
 // if the callback function returns false then iteration is terminated.
 type Callback func(node Node) (cont bool)
 
-// ART Node interface.
+// Node interface.
 type Node interface {
 	// Kind returns node type.
 	Kind() Kind
@@ -71,7 +71,7 @@ type Iterator interface {
 	Next() (Node, error)
 }
 
-// Adaptive Radix Tree interface.
+// Tree is an Adaptive Radix Tree interface.
 type Tree interface {
 	// Insert a new key into the tree.
 	// If the key already in the tree then return oldValue, true and nil, false otherwise.

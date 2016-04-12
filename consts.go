@@ -21,6 +21,6 @@ const (
 )
 
 const (
-	// Maximum prefix length for internal nodes.
+	// MaxPrefixLen is maximum prefix length for internal nodes.
 	MaxPrefixLen = 10
 )
