@@ -1,3 +1,10 @@
+EXTERNAL_TOOLS=\
+	golang.org/x/tools/cmd/cover \
+	golang.org/x/tools/cmd/vet \
+	github.com/mattn/goveralls \
+	github.com/stretchr/testify/assert
+
+
 all: all-tests
 	@echo "*** Done!"
 
@@ -36,3 +43,8 @@ build-race:
 	@echo "*** Build project with race condition..."
 	@go build --race -v .
 
+bootstrap:
+	@for tool in  $(EXTERNAL_TOOLS) ; do \
+		echo "Installing $$tool" ; \
+    	go get $$tool; \
+	done

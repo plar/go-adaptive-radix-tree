@@ -1,23 +1,18 @@
 language: go
 sudo: false
+dist: trusty
 
 go:
-- 1.1.2
-- 1.2.2
-- 1.3.3
 - 1.4.2
 - 1.5.1
 - tip
 
-matrix:
-  allow_failures:
-    - go: 1.1.2
+# matrix:
+#   allow_failures:
+#     - go: 1.1.2
 
 install:
-  - go get golang.org/x/tools/cmd/cover
-  - go get golang.org/x/tools/cmd/vet
-  - go get github.com/mattn/goveralls
-  - go get github.com/stretchr/testify/assert
+  - make bootstrap
 
 before_script:
   - go vet ./...
