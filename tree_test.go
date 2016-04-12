@@ -18,7 +18,16 @@ type treeStats struct {
 	node256Count int
 }
 
-var words [][]byte
+type testDataset struct {
+	message      string
+	insert       interface{}
+	delete       interface{}
+	size         int
+	root         interface{}
+	deleteStatus bool
+}
+
+type testDatasetBuilder func(data *testDataset, tree *tree)
 
 func loadTestFile(path string) [][]byte {
 	file, err := os.Open(path)
@@ -194,18 +203,71 @@ func TestTreeInsertUUIDsAndMinMax(t *testing.T) {
 	assert.Equal(t, []byte("ffffcb46-a92e-4822-82af-a7190f9c1ec5"), maximum.value)
 }
 
-func TestTreeInsertAndDeleteOperations(t *testing.T) {
-	type testData struct {
-		message      string
-		insert       interface{}
-		delete       interface{}
-		size         int
-		root         interface{}
-		deleteStatus bool
+func (ds *testDataset) build(t *testing.T, tree *tree) {
+	if strs, ok := ds.insert.([]string); ok {
+		for _, term := range strs {
+			tree.Insert(Key(term), term)
+		}
+	} else if builder, ok := ds.insert.(testDatasetBuilder); ok {
+		builder(ds, tree)
 	}
-	type treeTestCustom func(data *testData, tree *tree)
+}
 
-	var data = []testData{
+
+func (ds *testDataset) process(t *testing.T, tree *tree) {
+	if strs, ok := ds.delete.([]string); ok {
+		ds.processDatasetAsStrings(t, tree, strs)
+	} else if bts, ok := ds.delete.([]byte); ok {
+		ds.processDatasetAsBytes(t, tree, bts)
+	} else if builder, ok := ds.delete.(testDatasetBuilder); ok {
+		builder(ds, tree)
+	}
+}
+
+func (ds *testDataset) processDatasetAsBytes(t *testing.T, tree *tree, bts []byte) {
+	for _, term := range bts {
+
+		val, deleted := tree.Delete(Key{term})
+		assert.Equal(t, ds.deleteStatus, deleted, ds.message)
+
+		if deleted {
+			assert.Equal(t, []byte{term}, val, ds.message)
+		}
+
+		_, found := tree.Search(Key{term})
+		assert.False(t, found, ds.message)
+	}
+}
+
+func (ds *testDataset) processDatasetAsStrings(t *testing.T, tree *tree, strs []string) {
+	for _, term := range strs {
+		val, deleted := tree.Delete(Key(term))
+		assert.Equal(t, ds.deleteStatus, deleted, ds.message)
+
+		if s, ok := val.(string); ok {
+			assert.Equal(t, term, s, ds.message)
+		}
+
+		_, found := tree.Search(Key(term))
+		assert.False(t, found, ds.message)
+	}
+}
+
+func (ds *testDataset) assert(t *testing.T, tree *tree) {
+	assert.Equal(t, ds.size, tree.size, ds.message)
+
+	if ds.root == nil {
+		assert.Nil(t, tree.root, ds.message)
+	} else if k, ok := ds.root.(Kind); ok {
+		assert.Equal(t, k, tree.root.kind, ds.message)
+	} else if an, ok := ds.root.(*artNode); ok {
+		assert.Equal(t, an, tree.root, ds.message)
+	}
+}
+
+func TestTreeInsertAndDeleteOperations(t *testing.T) {
+
+	var data = []*testDataset{
 		{
 			"Insert 1 Delete 1",
 			[]string{"test"},
@@ -264,7 +326,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			true},
 		{
 			"Insert 49 Delete 0",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -275,7 +337,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			false},
 		{
 			"Insert 49 Delete 1",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -286,12 +348,12 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			true},
 		{
 			"Insert 49 Delete 49",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
 			}),
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					term := []byte{i}
 					val, deleted := tree.Delete(term)
@@ -304,12 +366,12 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			true},
 		{
 			"Insert 49 Delete 49",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
 			}),
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					term := []byte{i}
 					val, deleted := tree.Delete(term)
@@ -322,7 +384,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			true},
 		{
 			"Insert 256 Delete 1",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
 					term := bytes.NewBuffer([]byte{})
 					term.WriteByte(byte(i))
@@ -335,13 +397,13 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			true},
 		{
 			"Insert 256 Delete 256",
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
 					term := fmt.Sprintf("%d", i)
 					tree.Insert(Key(term), term)
 				}
 			}),
-			treeTestCustom(func(data *testData, tree *tree) {
+			testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
 					term := fmt.Sprintf("%d", i)
 					val, deleted := tree.Delete(Key(term))
@@ -356,58 +418,9 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 
 	for _, ds := range data {
 		tree := newTree()
-
-		// insert test data...
-		if strs, ok := ds.insert.([]string); ok {
-			for _, term := range strs {
-				tree.Insert(Key(term), term)
-			}
-		} else if builder, ok := ds.insert.(treeTestCustom); ok {
-			builder(&ds, tree)
-		}
-
-		// delete test data and check...
-		if strs, ok := ds.delete.([]string); ok {
-			for _, term := range strs {
-				val, deleted := tree.Delete(Key(term))
-				assert.Equal(t, ds.deleteStatus, deleted, ds.message)
-
-				if s, ok := val.(string); ok {
-					assert.Equal(t, term, s, ds.message)
-				}
-
-				_, found := tree.Search(Key(term))
-				assert.False(t, found, ds.message)
-			}
-		} else if bts, ok := ds.delete.([]byte); ok {
-			for _, term := range bts {
-
-				val, deleted := tree.Delete(Key{term})
-				assert.Equal(t, ds.deleteStatus, deleted, ds.message)
-
-				if deleted {
-					assert.Equal(t, []byte{term}, val, ds.message)
-				}
-
-				_, found := tree.Search(Key{term})
-				assert.False(t, found, ds.message)
-			}
-		} else if builder, ok := ds.delete.(treeTestCustom); ok {
-			builder(&ds, tree)
-		}
-
-		// general assertions...
-		assert.Equal(t, ds.size, tree.size, ds.message)
-
-		if ds.root == nil {
-			assert.Nil(t, tree.root, ds.message)
-		} else if k, ok := ds.root.(Kind); ok {
-			assert.Equal(t, k, tree.root.kind, ds.message)
-		} else if an, ok := ds.root.(*artNode); ok {
-			assert.Equal(t, an, tree.root, ds.message)
-		}
-
-		//fmt.Println("===================================\n", DumpNode(tree.root))
+		ds.build(t, tree)
+		ds.process(t, tree)
+		ds.assert(t, tree)
 	}
 }
 
@@ -760,6 +773,32 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	assert.Equal(t, ErrConcurrentModification, err)
 }
 
+func (stats *treeStats) processStats(node Node) bool {
+	switch node.Kind() {
+	case Node4:
+		stats.node4Count++
+	case Node16:
+		stats.node16Count++
+	case Node48:
+		stats.node48Count++
+	case Node256:
+		stats.node256Count++
+	case Leaf:
+		stats.leafCount++
+	}
+	return true
+}
+
+func calcStats(it Iterator) treeStats {
+	stats := treeStats{}
+
+	for it.HasNext() {
+		node, _ := it.Next()
+		stats.processStats(node)
+	}
+	return stats
+}
+
 func TestTreeIterateWordsStats(t *testing.T) {
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
@@ -767,60 +806,13 @@ func TestTreeIterateWordsStats(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
-	stats := treeStats{}
-
-	for it := tree.Iterator(TraverseAll); it.HasNext(); {
-		node, _ := it.Next()
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-	}
-
+	stats := calcStats(tree.Iterator(TraverseAll))
 	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
 
-	stats = treeStats{}
-	for it := tree.Iterator(); it.HasNext(); {
-		node, _ := it.Next()
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-	}
+	stats = calcStats(tree.Iterator())
 	assert.Equal(t, treeStats{235886, 0, 0, 0, 0}, stats)
 
-	stats = treeStats{}
-	for it := tree.Iterator(TraverseNode); it.HasNext(); {
-		node, _ := it.Next()
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-	}
+	stats = calcStats(tree.Iterator(TraverseNode))
 	assert.Equal(t, treeStats{0, 111616, 12181, 458, 1}, stats)
 }
 
@@ -984,24 +976,11 @@ func BenchmarkTreeIteratorWords(b *testing.B) {
 	}
 	b.ResetTimer()
 
-	stats := treeStats{}
-	for it := tree.Iterator(TraverseAll); it.HasNext(); {
-		node, _ := it.Next()
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-	}
+	stats := calcStats(tree.Iterator(TraverseAll))
 	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
 }
+
+
 
 func BenchmarkTreeForEachWords(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
@@ -1012,57 +991,15 @@ func BenchmarkTreeForEachWords(b *testing.B) {
 	b.ResetTimer()
 
 	stats := treeStats{}
-	tree.ForEach(func(node Node) bool {
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-		return true
-	}, TraverseAll)
+	tree.ForEach(stats.processStats, TraverseAll)
 	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
 
 	stats = treeStats{}
-	tree.ForEach(func(node Node) bool {
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-		return true
-	}, TraverseLeaf)
+	tree.ForEach(stats.processStats, TraverseLeaf)
 	assert.Equal(b, treeStats{235886, 0, 0, 0, 0}, stats)
 
 	stats = treeStats{}
-	tree.ForEach(func(node Node) bool {
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-		return true
-	}, TraverseNode)
+	tree.ForEach(stats.processStats, TraverseNode)
 	assert.Equal(b, treeStats{0, 111616, 12181, 458, 1}, stats)
 }
 
