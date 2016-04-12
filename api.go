@@ -101,7 +101,7 @@ type Tree interface {
 	Iterator(options ...int) Iterator
 	//IteratorPrefix(key Key) Iterator
 
-	// Minimum returns the minumum valued leaf, true if leaf is found and nil, false otherwise.
+	// Minimum returns the minimum valued leaf, true if leaf is found and nil, false otherwise.
 	Minimum() (min Value, found bool)
 
 	// Maximum returns the maximum valued leaf, true if leaf is found and nil, false otherwise.
