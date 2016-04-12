@@ -213,7 +213,6 @@ func (ds *testDataset) build(t *testing.T, tree *tree) {
 	}
 }
 
-
 func (ds *testDataset) process(t *testing.T, tree *tree) {
 	if strs, ok := ds.delete.([]string); ok {
 		ds.processDatasetAsStrings(t, tree, strs)
@@ -979,8 +978,6 @@ func BenchmarkTreeIteratorWords(b *testing.B) {
 	stats := calcStats(tree.Iterator(TraverseAll))
 	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
 }
-
-
 
 func BenchmarkTreeForEachWords(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
