@@ -153,6 +153,12 @@ func TestNodeAddChild(t *testing.T) {
 	}
 }
 
+func TestNodeAddChildForLeaf(t *testing.T) {
+	leaf := factory.newLeaf([]byte("key"), "value")
+	assert.False(t, leaf.addChild('c', nil))
+}
+
+
 func TestNodeIndex(t *testing.T) {
 	nodes := []*artNode{factory.newNode4(), factory.newNode16(), factory.newNode48(), factory.newNode256()}
 

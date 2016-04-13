@@ -3,7 +3,6 @@ package art
 import (
 	"bytes"
 	"fmt"
-	"strings"
 )
 
 type depthStorage struct {
@@ -16,23 +15,23 @@ type treeStringer struct {
 	buf     *bytes.Buffer
 }
 
+// String returns tree in the human readable format, see DumpNode for examples
 func (t *tree) String() string {
 	return DumpNode(t.root)
 }
 
-func (ts *treeStringer) generatePads(depth int, childNum int, childrenTotal int) (pad0, pad string) {
-	for d := 0; d <= depth; d++ {
-		if d < depth {
-			pad0 += "│   "
-		} else {
-			pad0 += "├──"
-		}
-
-	}
-	pad0 += " "
-	pad = strings.Repeat("│   ", depth+1)
-	return
-}
+// func (ts *treeStringer) generatePads(depth int, childNum int, childrenTotal int) (pad0, pad string) {
+// 	for d := 0; d <= depth; d++ {
+// 		if d < depth {
+// 			pad0 += "│   "
+// 		} else {
+// 			pad0 += "├──"
+// 		}
+// 	}
+// 	pad0 += " "
+// 	pad = strings.Repeat("│   ", depth+1)
+// 	return
+// }
 
 func (ts *treeStringer) generatePadsV2(depth int, childNum int, childrenTotal int) (pad0, pad string) {
 	ts.storage[depth] = depthStorage{childNum, childrenTotal}
@@ -214,7 +213,7 @@ DumpNode returns Tree in the human readable format:
      └── nil
 */
 func DumpNode(root *artNode) string {
-	ts := &treeStringer{make([]depthStorage, 256), bytes.NewBufferString("")}
+	ts := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
 	ts.rootNode(root)
 	return ts.buf.String()
 }

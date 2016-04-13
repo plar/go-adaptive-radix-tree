@@ -354,133 +354,172 @@ func (an *artNode) leaf() *leaf {
 	return (*leaf)(an.ref)
 }
 
-func (an *artNode) addChild(c byte, child *artNode) bool {
-	switch an.kind {
-	case Node4:
-		node := an.node4()
-		if node.numChildren < an.maxChildren() {
-			i := 0
-			for ; i < node.numChildren; i++ {
-				if c < node.keys[i] {
-					break
-				}
+func (an *artNode) _addChild4(c byte, child *artNode) bool {
+	node := an.node4()
+	if node.numChildren < an.maxChildren() {
+		i := 0
+		for ; i < node.numChildren; i++ {
+			if c < node.keys[i] {
+				break
 			}
-
-			limit := node.numChildren - i
-			for j := limit; limit > 0 && j > 0; j-- {
-				node.keys[i+j] = node.keys[i+j-1]
-				node.children[i+j] = node.children[i+j-1]
-			}
-
-			node.keys[i] = c
-			node.children[i] = child
-			node.numChildren++
-		} else {
-			newNode := an.grow()
-			newNode.addChild(c, child)
-			replaceNode(an, newNode)
-			return true
 		}
 
-	case Node16:
-		node := an.node16()
-		if node.numChildren < an.maxChildren() {
-			index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
-			for i := node.numChildren; i > index; i-- {
-				node.keys[i] = node.keys[i-1]
-				node.children[i] = node.children[i-1]
-			}
-
-			node.keys[index] = c
-			node.children[index] = child
-			node.numChildren++
-		} else {
-			newNode := an.grow()
-			newNode.addChild(c, child)
-			replaceNode(an, newNode)
-			return true
+		limit := node.numChildren - i
+		for j := limit; limit > 0 && j > 0; j-- {
+			node.keys[i+j] = node.keys[i+j-1]
+			node.children[i+j] = node.children[i+j-1]
 		}
 
-	case Node48:
-		node := an.node48()
-		if node.numChildren < an.maxChildren() {
-			index := byte(0)
-			for node.children[index] != nil {
-				index++
-			}
-
-			node.keys[c] = index + 1
-			node.children[index] = child
-			node.numChildren++
-		} else {
-			newNode := an.grow()
-			newNode.addChild(c, child)
-			replaceNode(an, newNode)
-			return true
-		}
-
-	case Node256:
-		node := an.node256()
+		node.keys[i] = c
+		node.children[i] = child
 		node.numChildren++
-		node.children[c] = child
-
+	} else {
+		newNode := an.grow()
+		newNode.addChild(c, child)
+		replaceNode(an, newNode)
+		return true
 	}
 
 	return false
+}
+
+func (an *artNode) _addChild16(c byte, child *artNode) bool {
+	node := an.node16()
+	if node.numChildren < an.maxChildren() {
+		index := sort.Search(node.numChildren, func(i int) bool { return c <= node.keys[byte(i)] })
+		for i := node.numChildren; i > index; i-- {
+			node.keys[i] = node.keys[i-1]
+			node.children[i] = node.children[i-1]
+		}
+
+		node.keys[index] = c
+		node.children[index] = child
+		node.numChildren++
+	} else {
+		newNode := an.grow()
+		newNode.addChild(c, child)
+		replaceNode(an, newNode)
+		return true
+	}
+	return false
+}
+
+func (an *artNode) _addChild48(c byte, child *artNode) bool {
+	node := an.node48()
+	if node.numChildren < an.maxChildren() {
+		index := byte(0)
+		for node.children[index] != nil {
+			index++
+		}
+
+		node.keys[c] = index + 1
+		node.children[index] = child
+		node.numChildren++
+	} else {
+		newNode := an.grow()
+		newNode.addChild(c, child)
+		replaceNode(an, newNode)
+		return true
+	}
+
+	return false
+}
+
+func (an *artNode) _addChild256(c byte, child *artNode) bool {
+	node := an.node256()
+	node.numChildren++
+	node.children[c] = child
+	return false
+}
+
+func (an *artNode) addChild(c byte, child *artNode) bool {
+	switch an.kind {
+	case Node4:
+		return an._addChild4(c, child)
+
+	case Node16:
+		return an._addChild16(c, child)
+
+	case Node48:
+		return an._addChild48(c, child)
+
+	case Node256:
+		return an._addChild256(c, child)
+
+	default:
+		return false
+	}
+}
+
+func (an *artNode) _deleteChild4(c byte) int {
+	node := an.node4()
+	if idx := an.index(c); idx >= 0 {
+		node.numChildren--
+		node.keys[idx] = 0
+		node.children[idx] = nil
+		for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
+			node.keys[i] = node.keys[i+1]
+			node.children[i] = node.children[i+1]
+		}
+
+		node.keys[node.numChildren] = 0
+		node.children[node.numChildren] = nil
+
+	}
+	return node.numChildren
+}
+
+func (an *artNode) _deleteChild16(c byte) int {
+	node := an.node16()
+	if idx := an.index(c); idx >= 0 {
+		node.numChildren--
+		node.keys[idx] = 0
+		node.children[idx] = nil
+		for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
+			node.keys[i] = node.keys[i+1]
+			node.children[i] = node.children[i+1]
+		}
+
+		node.keys[node.numChildren] = 0
+		node.children[node.numChildren] = nil
+	}
+	return node.numChildren
+}
+
+func (an *artNode) _deleteChild48(c byte) int {
+	node := an.node48()
+	if idx := an.index(c); idx >= 0 && node.children[idx] != nil {
+		node.children[idx] = nil
+		node.keys[idx] = 0
+		node.numChildren--
+	}
+
+	return node.numChildren
+}
+
+func (an *artNode) _deleteChild256(c byte) int {
+	node := an.node256()
+	if idx := an.index(c); node.children[idx] != nil {
+		node.children[idx] = nil
+		node.numChildren--
+	}
+	return node.numChildren
 }
 
 func (an *artNode) deleteChild(c byte) bool {
 	numChildren := -1
 	switch an.kind {
 	case Node4:
-		node := an.node4()
-		if idx := an.index(c); idx >= 0 {
-			node.numChildren--
-			node.keys[idx] = 0
-			node.children[idx] = nil
-			for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
-				node.keys[i] = node.keys[i+1]
-				node.children[i] = node.children[i+1]
-			}
-
-			node.keys[node.numChildren] = 0
-			node.children[node.numChildren] = nil
-
-		}
-		numChildren = node.numChildren
+		numChildren = an._deleteChild4(c)
 
 	case Node16:
-		node := an.node16()
-		if idx := an.index(c); idx >= 0 {
-			node.numChildren--
-			node.keys[idx] = 0
-			node.children[idx] = nil
-			for i := idx; i <= node.numChildren && i+1 < len(node.keys); i++ {
-				node.keys[i] = node.keys[i+1]
-				node.children[i] = node.children[i+1]
-			}
-
-			node.keys[node.numChildren] = 0
-			node.children[node.numChildren] = nil
-		}
-		numChildren = node.numChildren
+		numChildren = an._deleteChild16(c)
 
 	case Node48:
-		node := an.node48()
-		if idx := an.index(c); idx >= 0 && node.children[idx] != nil {
-			node.children[idx] = nil
-			node.keys[idx] = 0
-			node.numChildren--
-		}
-		numChildren = node.numChildren
+		numChildren = an._deleteChild48(c)
 
 	case Node256:
-		node := an.node256()
-		if idx := an.index(c); node.children[idx] != nil {
-			node.children[idx] = nil
-			node.numChildren--
-		}
-		numChildren = node.numChildren
+		numChildren = an._deleteChild256(c)
 	}
 
 	if numChildren != -1 && numChildren < an.shrinkThreshold() {
@@ -554,84 +593,103 @@ func (an *artNode) grow() *artNode {
 
 }
 
+func (an *artNode) _shrink4() *artNode {
+	node4 := an.node4()
+	child := node4.children[0]
+	if child.isLeaf() {
+		return child
+	}
+
+	curPrefixLen := node4.prefixLen
+	if curPrefixLen < MaxPrefixLen {
+		node4.prefix[curPrefixLen] = node4.keys[0]
+		curPrefixLen++
+	}
+
+	childNode := child.node()
+	if curPrefixLen < MaxPrefixLen {
+		childPrefixLen := min(childNode.prefixLen, MaxPrefixLen-curPrefixLen)
+		for i := 0; i < childPrefixLen; i++ {
+			node4.prefix[curPrefixLen+i] = childNode.prefix[i]
+		}
+		curPrefixLen += childPrefixLen
+	}
+
+	for i := 0; i < min(curPrefixLen, MaxPrefixLen); i++ {
+		childNode.prefix[i] = node4.prefix[i]
+	}
+	childNode.prefixLen += node4.prefixLen + 1
+	return child
+}
+
+func (an *artNode) _shrink16() *artNode {
+	node16 := an.node16()
+
+	newNode := factory.newNode4().copyMeta(an)
+	node4 := newNode.node4()
+	node4.numChildren = 0
+	for i := 0; i < len(node4.keys); i++ {
+		node4.keys[i] = node16.keys[i]
+		node4.children[i] = node16.children[i]
+		node4.numChildren++
+	}
+	return newNode
+}
+
+func (an *artNode) _shrink48() *artNode {
+	node48 := an.node48()
+
+	newNode := factory.newNode16().copyMeta(an)
+	node16 := newNode.node16()
+	node16.numChildren = 0
+	for i := 0; i < len(node48.keys); i++ {
+		idx := node48.keys[byte(i)]
+		if idx <= 0 {
+			continue
+		}
+
+		if child := node48.children[idx-1]; child != nil {
+			node16.children[node16.numChildren] = child
+			node16.keys[node16.numChildren] = byte(i)
+			node16.numChildren++
+		}
+	}
+	return newNode
+}
+
+func (an *artNode) _shrink256() *artNode {
+	node256 := an.node256()
+
+	newNode := factory.newNode48().copyMeta(an)
+	node48 := newNode.node48()
+	node48.numChildren = 0
+	for i := 0; i < len(node256.children); i++ {
+		child := node256.children[byte(i)]
+		if child != nil {
+			node48.children[node48.numChildren] = child
+			node48.keys[byte(i)] = byte(node48.numChildren + 1)
+			node48.numChildren++
+		}
+	}
+	return newNode
+}
+
+
 func (an *artNode) shrink() *artNode {
 	switch an.kind {
 	case Node4:
-		node4 := an.node4()
-		child := node4.children[0]
-		if child.isLeaf() {
-			return child
-		}
-
-		curPrefixLen := node4.prefixLen
-		if curPrefixLen < MaxPrefixLen {
-			node4.prefix[curPrefixLen] = node4.keys[0]
-			curPrefixLen++
-		}
-
-		childNode := child.node()
-		if curPrefixLen < MaxPrefixLen {
-			childPrefixLen := min(childNode.prefixLen, MaxPrefixLen-curPrefixLen)
-			for i := 0; i < childPrefixLen; i++ {
-				node4.prefix[curPrefixLen+i] = childNode.prefix[i]
-			}
-			curPrefixLen += childPrefixLen
-		}
-
-		for i := 0; i < min(curPrefixLen, MaxPrefixLen); i++ {
-			childNode.prefix[i] = node4.prefix[i]
-		}
-		childNode.prefixLen += node4.prefixLen + 1
-		return child
+		return an._shrink4()
 
 	case Node16:
-		node16 := an.node16()
-
-		newNode := factory.newNode4().copyMeta(an)
-		node4 := newNode.node4()
-		node4.numChildren = 0
-		for i := 0; i < len(node4.keys); i++ {
-			node4.keys[i] = node16.keys[i]
-			node4.children[i] = node16.children[i]
-			node4.numChildren++
-		}
-		return newNode
+		return an._shrink16()
 
 	case Node48:
-		node48 := an.node48()
-
-		newNode := factory.newNode16().copyMeta(an)
-		node16 := newNode.node16()
-		node16.numChildren = 0
-		for i := 0; i < len(node48.keys); i++ {
-			idx := node48.keys[byte(i)]
-			if idx <= 0 {
-				continue
-			}
-
-			if child := node48.children[idx-1]; child != nil {
-				node16.children[node16.numChildren] = child
-				node16.keys[node16.numChildren] = byte(i)
-				node16.numChildren++
-			}
-		}
-		return newNode
+		return an._shrink48()
 
 	case Node256:
-		node256 := an.node256()
+		return an._shrink256()
 
-		newNode := factory.newNode48().copyMeta(an)
-		node48 := newNode.node48()
-		node48.numChildren = 0
-		for i := 0; i < len(node256.children); i++ {
-			child := node256.children[byte(i)]
-			if child != nil {
-				node48.children[node48.numChildren] = child
-				node48.keys[byte(i)] = byte(node48.numChildren + 1)
-				node48.numChildren++
-			}
-		}
-		return newNode
+	default:
+		return nil
 	}
-	return nil
 }

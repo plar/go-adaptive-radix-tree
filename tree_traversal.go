@@ -54,6 +54,15 @@ func (t *tree) ForEach(callback Callback, opts ...int) {
 	t.forEach(t.root, traverseFilter(options, callback))
 }
 
+func (t *tree) _forEach(children []*artNode, callback Callback) {
+	for i, limit := 0, len(children); i < limit; i++ {
+		child := children[i]
+		if child != nil {
+			t.forEach(child, callback)
+		}
+	}
+}
+
 func (t *tree) forEach(current *artNode, callback Callback) {
 	if current == nil {
 		return
@@ -65,22 +74,10 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 
 	switch current.kind {
 	case Node4:
-		node := current.node4()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.forEach(child, callback)
-			}
-		}
+		t._forEach(current.node4().children[:], callback)
 
 	case Node16:
-		node := current.node16()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.forEach(child, callback)
-			}
-		}
+		t._forEach(current.node16().children[:], callback)
 
 	case Node48:
 		node := current.node48()
@@ -96,13 +93,7 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 		}
 
 	case Node256:
-		node := current.node256()
-		for i, limit := 0, len(node.children); i < limit; i++ {
-			child := node.children[i]
-			if child != nil {
-				t.forEach(child, callback)
-			}
-		}
+		t._forEach(current.node256().children[:], callback)
 	}
 }
 
