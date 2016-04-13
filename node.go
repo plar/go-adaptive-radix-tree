@@ -186,12 +186,10 @@ func (an *artNode) matchDeep(key Key, depth int) int /* mismatch index*/ {
 }
 
 func replaceRef(oldNode **artNode, newNode *artNode) {
-	// factory.releaseNode(*oldNode)
 	*oldNode = newNode
 }
 
 func replaceNode(oldNode *artNode, newNode *artNode) {
-	// factory.releaseNode(oldNode)
 	*oldNode = *newNode
 }
 
