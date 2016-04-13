@@ -674,7 +674,6 @@ func (an *artNode) _shrink256() *artNode {
 	return newNode
 }
 
-
 func (an *artNode) shrink() *artNode {
 	switch an.kind {
 	case Node4:
