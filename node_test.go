@@ -73,6 +73,14 @@ func TestLeafMatch(t *testing.T) {
 	assert.True(t, leaf.leaf().match([]byte("key")))
 }
 
+func TestLeafPrefixMatch(t *testing.T) {
+	leaf := factory.newLeaf([]byte("key"), "value")
+	assert.False(t, leaf.leaf().prefixMatch([]byte("unknown-key")))
+	assert.False(t, leaf.leaf().prefixMatch(nil))
+
+	assert.True(t, leaf.leaf().prefixMatch([]byte("ke")))
+}
+
 func TestNodeSetPrefix(t *testing.T) {
 	n4 := factory.newNode4()
 	assert.NotNil(t, n4)
