@@ -111,7 +111,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 		if current.isLeaf() {
 			leaf := current.leaf()
 
-			if leaf.match(key) {
+			if leaf.prefixMatch(key) {
 				callback(current)
 			}
 			return
@@ -119,7 +119,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 
 		if depth == len(key) {
 			leaf := current.minimum()
-			if leaf.match(key) {
+			if leaf.prefixMatch(key) {
 				t.forEach(current, callback)
 			}
 
@@ -129,6 +129,11 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 		node := current.node()
 		if node.prefixLen > 0 {
 			prefixLen := current.matchDeep(key, depth)
+
+			if prefixLen > node.prefixLen {
+				prefixLen = node.prefixLen
+			}
+
 			if prefixLen == 0 {
 				return
 			} else if depth+prefixLen == len(key) {

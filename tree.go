@@ -109,7 +109,6 @@ func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth in
 			leaf.value = value
 			return oldValue, true
 		}
-
 		// new value, split the leaf into new node4
 		newLeaf := factory.newLeaf(key, value)
 		leaf2 := newLeaf.leaf()

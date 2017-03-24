@@ -150,7 +150,14 @@ func (an *artNode) setPrefix(key Key, prefixLen int) *artNode {
 }
 
 func (l *leaf) match(key Key) bool {
-	if key == nil || len(l.key) < len(key) {
+	if len(l.key) != len(key) {
+		return false
+	}
+	return bytes.Compare(l.key[:len(key)], key) == 0
+}
+
+func (l *leaf) prefixMatch(key Key) bool {
+	if len(l.key) < len(key) {
 		return false
 	}
 	return bytes.Compare(l.key[:len(key)], key) == 0

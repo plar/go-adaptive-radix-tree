@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -614,11 +615,11 @@ func TestTreeTraversalPrefix(t *testing.T) {
 		{
 			"api",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
-			[]string{"api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "api.foo", "api"},
 		}, {
 			"a",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
-			[]string{"abc.123.456", "api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 		}, {
 			"b",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
@@ -627,7 +628,7 @@ func TestTreeTraversalPrefix(t *testing.T) {
 		{
 			"api.",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
-			[]string{"api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "api.foo"},
 		},
 		{
 			"api.foo.bar",
@@ -641,7 +642,7 @@ func TestTreeTraversalPrefix(t *testing.T) {
 		}, {
 			"",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
-			[]string{"abc.123.456", "api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"},
+			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 		}, {
 			"this:key:has",
 			[]string{
@@ -650,10 +651,19 @@ func TestTreeTraversalPrefix(t *testing.T) {
 				"this:key:has:a:long:common:prefix:1",
 			},
 			[]string{
-				"this:key:has:a:long:common:prefix:1",
-				"this:key:has:a:long:common:prefix:2",
 				"this:key:has:a:long:prefix:3",
+				"this:key:has:a:long:common:prefix:2",
+				"this:key:has:a:long:common:prefix:1",
 			},
+		}, {
+			"ele",
+			[]string{"elector", "electibles", "elect", "electible"},
+			[]string{"elector", "electibles", "elect", "electible"},
+		},
+		{
+			"long.api.url.v1",
+			[]string{"long.api.url.v1.foo", "long.api.url.v1.bar", "long.api.url.v2.foo"},
+			[]string{"long.api.url.v1.foo", "long.api.url.v1.bar"},
 		},
 	}
 
@@ -672,6 +682,8 @@ func TestTreeTraversalPrefix(t *testing.T) {
 			return true
 		})
 
+		sort.Strings(d.expected)
+		sort.Strings(actual)
 		assert.Equal(t, d.expected, actual, d.keyPrefix)
 	}
 
