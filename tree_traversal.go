@@ -26,7 +26,6 @@ func traverseOptions(opts ...int) int {
 	for _, opt := range opts {
 		options |= opt
 	}
-	options &= TraverseAll
 	if options == 0 {
 		// By default filter only leafs
 		options = TraverseLeaf
@@ -51,33 +50,47 @@ func traverseFilter(options int, callback Callback) Callback {
 
 func (t *tree) ForEach(callback Callback, opts ...int) {
 	options := traverseOptions(opts...)
-	t.forEach(t.root, traverseFilter(options, callback))
+	t.forEach(t.root, traverseFilter(options, callback), options)
 }
 
-func (t *tree) _forEach(children []*artNode, callback Callback) {
-	for i, limit := 0, len(children); i < limit; i++ {
-		child := children[i]
-		if child != nil {
-			t.forEach(child, callback)
+func (t *tree) _forEach(children []*artNode, callback Callback, options int) {
+	if !(options&TraverseDirectionReverse == TraverseDirectionReverse) {
+		// default forward iterator
+		for i, limit := 0, len(children); i < limit; i++ {
+			child := children[i]
+			if child != nil {
+				t.forEach(child, callback, options)
+			}
+		}
+	} else {
+		// reverse iterator
+		for i, limit := len(children)-1, 0; i >= limit; i-- {
+			child := children[i]
+			if child != nil {
+				t.forEach(child, callback, options)
+			}
 		}
 	}
 }
 
-func (t *tree) forEach(current *artNode, callback Callback) {
+func (t *tree) forEach(current *artNode, callback Callback, options int) {
 	if current == nil {
 		return
 	}
 
-	if !callback(current) {
-		return
+	if !(options&TraverseDirectionReverse == TraverseDirectionReverse) {
+		// by default always travers in forward direction
+		if !callback(current) {
+			return
+		}
 	}
 
 	switch current.kind {
 	case Node4:
-		t._forEach(current.node4().children[:], callback)
+		t._forEach(current.node4().children[:], callback, options)
 
 	case Node16:
-		t._forEach(current.node16().children[:], callback)
+		t._forEach(current.node16().children[:], callback, options)
 
 	case Node48:
 		node := current.node48()
@@ -88,20 +101,28 @@ func (t *tree) forEach(current *artNode, callback Callback) {
 			}
 			child := node.children[idx-1]
 			if child != nil {
-				t.forEach(child, callback)
+				t.forEach(child, callback, options)
 			}
 		}
 
 	case Node256:
-		t._forEach(current.node256().children[:], callback)
+		t._forEach(current.node256().children[:], callback, options)
+	}
+
+	if options&TraverseDirectionReverse == TraverseDirectionReverse {
+		// travers in Reverse direction
+		if !callback(current) {
+			return
+		}
 	}
 }
 
-func (t *tree) ForEachPrefix(key Key, callback Callback) {
-	t.forEachPrefix(t.root, key, callback)
+func (t *tree) ForEachPrefix(key Key, callback Callback, opts ...int) {
+	options := traverseOptions(opts...)
+	t.forEachPrefix(t.root, key, callback, options)
 }
 
-func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
+func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback, options int) {
 	if current == nil {
 		return
 	}
@@ -120,7 +141,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 		if depth == len(key) {
 			leaf := current.minimum()
 			if leaf.prefixMatch(key) {
-				t.forEach(current, callback)
+				t.forEach(current, callback, options)
 			}
 
 			return
@@ -137,7 +158,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 			if prefixLen == 0 {
 				return
 			} else if depth+prefixLen == len(key) {
-				t.forEach(current, callback)
+				t.forEach(current, callback, options)
 				return
 			}
 			depth += node.prefixLen

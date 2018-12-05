@@ -3,7 +3,9 @@ package art
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"os"
 	"sort"
 	"testing"
@@ -1089,4 +1091,108 @@ func BenchmarkTreeForEachUUIDs(b *testing.B) {
 		return true
 	}, TraverseAll)
 	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
+}
+
+func TestTreeTraversalReverseDirection(t *testing.T) {
+	tree := newTree()
+
+	tree.Insert(Key("1"), 1)
+	tree.Insert(Key("2"), 2)
+
+	traversal := []Node{}
+	tree.ForEach(func(node Node) bool {
+		traversal = append(traversal, node)
+		return true
+	}, TraverseAll, TraverseDirectionReverse)
+
+	assert.Equal(t, 2, tree.size)
+
+	assert.Equal(t, traversal[0].Key(), Key("2"))
+	assert.Equal(t, traversal[0].Value(), 2)
+	assert.Equal(t, Leaf, traversal[0].Kind())
+
+	assert.Equal(t, traversal[1].Key(), Key("1"))
+	assert.Equal(t, traversal[1].Value(), 1)
+	assert.Equal(t, Leaf, traversal[1].Kind())
+
+	assert.Equal(t, traversal[2], tree.root)
+	assert.Nil(t, traversal[2].Key())
+	assert.Nil(t, traversal[2].Value())
+	assert.NotEqual(t, Leaf, traversal[2].Kind())
+
+	tree.ForEach(func(node Node) bool {
+		assert.Equal(t, Node4, node.Kind())
+		return true
+	}, TraverseNode)
+}
+
+func nrandbin(n int) [][]byte {
+	i := make([][]byte, n)
+	for ind := range i {
+		buf := new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, int64(rand.Uint32()))
+		i[ind] = buf.Bytes()
+	}
+	return i
+}
+
+func bin2int(val []byte) int {
+	buf := new(bytes.Buffer)
+	buf.Write(val)
+	var j int64
+	binary.Read(buf, binary.BigEndian, &j)
+	return int(j)
+}
+
+func TestTreeTraversalReverseDirectionSort(t *testing.T) {
+	// store ramdom array of uints, sort and compare
+	tree := newTree()
+	bins := nrandbin(100)
+	for _, v := range bins {
+		tree.Insert(v, v)
+	}
+	sort.Slice(bins, func(i, j int) bool {
+		return bytes.Compare(bins[i], bins[j]) > 0
+	})
+
+	traversal := []int{}
+	tree.ForEach(func(node Node) bool {
+		traversal = append(traversal, bin2int(node.Key()))
+		return true
+	}, TraverseLeaf, TraverseDirectionReverse)
+
+	for ind, val := range bins {
+		if bin2int(val) != traversal[ind] {
+			t.Error("Not eq:", ind, bin2int(val), traversal[ind])
+		}
+	}
+}
+
+func TestForEachPrefixReverse(t *testing.T) {
+	keys := []string{"elector", "electibles", "elect", "electible", "a", "aA", "aa", "b", "bc", "c"}
+	tree := newTree()
+
+	for _, v := range keys {
+		tree.Insert(Key(v), Key(v))
+	}
+	traversal := []string{}
+	tree.ForEach(func(node Node) bool {
+		traversal = append(traversal, string(node.Key()))
+		return true
+	}, TraverseLeaf, TraverseDirectionReverse)
+
+	sort.Strings(keys)
+	for i, v := range keys {
+		if v != traversal[len(traversal)-(i+1)] {
+			t.Error(i, v, keys, traversal)
+		}
+	}
+	s := ""
+	tree.ForEachPrefix(Key("b"), func(node Node) bool {
+		s += string(node.Key())
+		return true
+	}, TraverseLeaf, TraverseDirectionReverse)
+	if s != "bcb" {
+		t.Error("PrefixReverse expected:", "bcb", "got", s)
+	}
 }

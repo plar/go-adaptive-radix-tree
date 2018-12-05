@@ -21,6 +21,12 @@ const (
 
 	// Iterate over all nodes in the tree.
 	TraverseAll = TraverseLeaf | TraverseNode
+
+	// Iterate in forward direction
+	TraverseDirectionForward = 4
+
+	// Iterate in reverse direction
+	TraverseDirectionReverse = 8
 )
 
 // These errors can be returned when iteration over the tree.
@@ -94,7 +100,9 @@ type Tree interface {
 	// ForEachPrefix executes a provided callback once per leaf node that
 	// leaf's key starts with the given keyPrefix.
 	// The callback iteration is terminated if the callback function returns false.
-	ForEachPrefix(keyPrefix Key, callback Callback)
+	// Pass TraverseXXX as an options to execute a provided callback
+	// once per NodeXXX type in the tree.
+	ForEachPrefix(keyPrefix Key, callback Callback, options ...int)
 
 	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
 	// Pass TraverseXXX as an options to return an iterator for preorder traversal over all NodeXXX types.
