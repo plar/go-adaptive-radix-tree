@@ -54,21 +54,22 @@ func (t *tree) ForEach(callback Callback, opts ...int) {
 }
 
 func (t *tree) _forEach(children []*artNode, callback Callback, options int) {
+
+	proccessChild := func(i int) {
+		child := children[i]
+		if child != nil {
+			t.forEach(child, callback, options)
+		}
+	}
 	if !(options&TraverseDirectionReverse == TraverseDirectionReverse) {
 		// default forward iterator
 		for i, limit := 0, len(children); i < limit; i++ {
-			child := children[i]
-			if child != nil {
-				t.forEach(child, callback, options)
-			}
+			proccessChild(i)
 		}
 	} else {
 		// reverse iterator
 		for i, limit := len(children)-1, 0; i >= limit; i-- {
-			child := children[i]
-			if child != nil {
-				t.forEach(child, callback, options)
-			}
+			proccessChild(i)
 		}
 	}
 }

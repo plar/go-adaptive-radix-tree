@@ -3,7 +3,6 @@ package art
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"os"
@@ -1119,35 +1118,22 @@ func TestTreeTraversalReverseDirection(t *testing.T) {
 	assert.Nil(t, traversal[2].Key())
 	assert.Nil(t, traversal[2].Value())
 	assert.NotEqual(t, Leaf, traversal[2].Kind())
-
-	tree.ForEach(func(node Node) bool {
-		assert.Equal(t, Node4, node.Kind())
-		return true
-	}, TraverseNode)
 }
 
-func nrandbin(n int) [][]byte {
-	i := make([][]byte, n)
-	for ind := range i {
-		buf := new(bytes.Buffer)
-		binary.Write(buf, binary.BigEndian, int64(rand.Uint32()))
-		i[ind] = buf.Bytes()
+// Keys generator
+func randKeys(totalKeys int) [][]byte {
+	keys := make([][]byte, totalKeys)
+	for i := range keys {
+		keys[i] = make([]byte, 8)
+		rand.Read(keys[i])
 	}
-	return i
-}
-
-func bin2int(val []byte) int {
-	buf := new(bytes.Buffer)
-	buf.Write(val)
-	var j int64
-	binary.Read(buf, binary.BigEndian, &j)
-	return int(j)
+	return keys
 }
 
 func TestTreeTraversalReverseDirectionSort(t *testing.T) {
-	// store ramdom array of uints, sort and compare
+	// store random array of byte, sort and compare
 	tree := newTree()
-	bins := nrandbin(100)
+	bins := randKeys(100)
 	for _, v := range bins {
 		tree.Insert(v, v)
 	}
@@ -1155,16 +1141,14 @@ func TestTreeTraversalReverseDirectionSort(t *testing.T) {
 		return bytes.Compare(bins[i], bins[j]) > 0
 	})
 
-	traversal := []int{}
+	traversal := make([][]byte, 0)
 	tree.ForEach(func(node Node) bool {
-		traversal = append(traversal, bin2int(node.Key()))
+		traversal = append(traversal, node.Key())
 		return true
 	}, TraverseLeaf, TraverseDirectionReverse)
 
 	for ind, val := range bins {
-		if bin2int(val) != traversal[ind] {
-			t.Error("Not eq:", ind, bin2int(val), traversal[ind])
-		}
+		assert.Equal(t, val, traversal[ind])
 	}
 }
 
@@ -1183,16 +1167,12 @@ func TestForEachPrefixReverse(t *testing.T) {
 
 	sort.Strings(keys)
 	for i, v := range keys {
-		if v != traversal[len(traversal)-(i+1)] {
-			t.Error(i, v, keys, traversal)
-		}
+		assert.Equal(t, v, traversal[len(traversal)-(i+1)])
 	}
 	s := ""
 	tree.ForEachPrefix(Key("b"), func(node Node) bool {
 		s += string(node.Key())
 		return true
 	}, TraverseLeaf, TraverseDirectionReverse)
-	if s != "bcb" {
-		t.Error("PrefixReverse expected:", "bcb", "got", s)
-	}
+	assert.Equal(t, "bcb", s)
 }
