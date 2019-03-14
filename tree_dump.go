@@ -5,6 +5,13 @@ import (
 	"fmt"
 )
 
+const (
+	printValuesAsChar = 1 << iota
+	printValuesAsDecimal
+
+	printValueDefault = printValuesAsChar
+)
+
 type depthStorage struct {
 	childNum      int
 	childrenTotal int
@@ -20,20 +27,7 @@ func (t *tree) String() string {
 	return DumpNode(t.root)
 }
 
-// func (ts *treeStringer) generatePads(depth int, childNum int, childrenTotal int) (pad0, pad string) {
-// 	for d := 0; d <= depth; d++ {
-// 		if d < depth {
-// 			pad0 += "│   "
-// 		} else {
-// 			pad0 += "├──"
-// 		}
-// 	}
-// 	pad0 += " "
-// 	pad = strings.Repeat("│   ", depth+1)
-// 	return
-// }
-
-func (ts *treeStringer) generatePadsV2(depth int, childNum int, childrenTotal int) (pad0, pad string) {
+func (ts *treeStringer) generatePads(depth int, childNum int, childrenTotal int) (pad0, pad string) {
 	ts.storage[depth] = depthStorage{childNum, childrenTotal}
 
 	for d := 0; d <= depth; d++ {
@@ -75,21 +69,51 @@ func (ts *treeStringer) generatePadsV2(depth int, childNum int, childrenTotal in
 	return
 }
 
-func (ts *treeStringer) append(str string) *treeStringer {
-	ts.buf.WriteString(str)
-	return ts
-}
-
-func (ts *treeStringer) array(arr []byte) *treeStringer {
-	ts.append(" [")
-	for _, b := range arr {
-		if b > 0 {
-			ts.append(string(b))
-		} else {
-			ts.append("·")
-		}
+func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
+	options := 0
+	for _, opt := range opts {
+		options |= opt
 	}
-	ts.append("]")
+
+	if options == 0 {
+		options = printValueDefault
+	}
+
+	switch v.(type) {
+
+	case string:
+		str, _ := v.(string)
+		ts.buf.WriteString(str)
+
+	case []byte:
+		arr, _ := v.([]byte)
+		ts.append("[")
+		for i, b := range arr {
+			if (options & printValuesAsChar) != 0 {
+				if b > 0 {
+					ts.append(fmt.Sprintf("%c", b))
+				} else {
+					ts.append("·")
+				}
+
+			} else if (options & printValuesAsDecimal) != 0 {
+				ts.append(fmt.Sprintf("%d", b))
+			}
+			if (options&printValuesAsDecimal) != 0 && i+1 < len(arr) {
+				ts.append(" ")
+			}
+		}
+		ts.append("]")
+
+	case Key:
+		k, _ := v.(Key)
+		ts.append("[").append(string(k)).append("]")
+
+	default:
+		ts.append("[")
+		ts.append(fmt.Sprintf("%#v", v))
+		ts.append("]")
+	}
 	return ts
 }
 
@@ -102,12 +126,12 @@ func (ts *treeStringer) children(children []*artNode, numChildred int, depth int
 func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []byte, children []*artNode, numChildren int, depth int) {
 	if prefix != nil {
 		ts.append(pad).append(fmt.Sprintf("prefix(%x): %v", prefixLen, prefix))
-		ts.array(prefix).append("\n")
+		ts.append(prefix).append("\n")
 	}
 
 	if keys != nil {
-		ts.append(pad).append(fmt.Sprintf("keys: %v", keys))
-		ts.array(keys).append("\n")
+		ts.append(pad).append("keys: ").append(keys, printValuesAsDecimal).append(" ")
+		ts.append(keys, printValuesAsChar).append("\n")
 	}
 
 	ts.append(pad).append(fmt.Sprintf("children(%v): %+v\n", numChildren, children))
@@ -115,8 +139,7 @@ func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []by
 }
 
 func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenTotal int) {
-	//padHeader, pad := ts.generatePads(depth, childNum, childrenTotal)
-	padHeader, pad := ts.generatePadsV2(depth, childNum, childrenTotal)
+	padHeader, pad := ts.generatePads(depth, childNum, childrenTotal)
 	if an == nil {
 		ts.append(padHeader).append("nil").append("\n")
 		return
@@ -147,7 +170,7 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 
 	case Leaf:
 		n := an.leaf()
-		ts.append(pad).append(fmt.Sprintf("key: %v", n.key)).array(n.key[:]).append("\n")
+		ts.append(pad).append(fmt.Sprintf("key: %v ", n.key)).append(n.key[:]).append("\n")
 
 		if s, ok := n.value.(string); ok {
 			ts.append(pad).append(fmt.Sprintf("val: %v\n", s))

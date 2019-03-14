@@ -92,18 +92,7 @@ func (an *artNode) Value() Value {
 }
 
 func (an *artNode) shrinkThreshold() int {
-	switch an.kind {
-	case Node4:
-		return node4Shrink
-	case Node16:
-		return node16Shrink
-	case Node48:
-		return node48Shrink
-	case Node256:
-		return node256Shrink
-	}
-
-	return 0
+	return an.minChildren()
 }
 
 func (an *artNode) minChildren() int {
