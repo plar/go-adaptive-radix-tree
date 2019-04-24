@@ -3,11 +3,19 @@ package main
 import (
 	"fmt"
 
-	"github.com/plar/go-adaptive-radix-tree"
+	art "github.com/plar/go-adaptive-radix-tree"
 )
 
-func main() {
+func DumpTree() {
+	tree := art.New()
+	terms := []string{"A", "a", "aa"}
+	for _, term := range terms {
+		tree.Insert(art.Key(term), term)
+	}
+	fmt.Println(tree)
+}
 
+func SimpleTree() {
 	tree := art.New()
 
 	tree.Insert(art.Key("Hi, I'm Key"), "Nice to meet you, I'm Value")
@@ -25,4 +33,9 @@ func main() {
 		value, _ := it.Next()
 		fmt.Printf("Iterator value=%v\n", value.Value())
 	}
+}
+
+func main() {
+	DumpTree()
+	SimpleTree()
 }
