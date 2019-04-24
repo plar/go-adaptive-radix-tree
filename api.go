@@ -33,7 +33,7 @@ var (
 type Kind int
 
 // Key Type.
-// Key can be a set of any characters include unicode chars and zero bytes.
+// Key can be a set of any characters include unicode chars with null bytes.
 type Key []byte
 
 // Value type.

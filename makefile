@@ -14,7 +14,7 @@ get:
 
 all-tests:
 	@echo "*** Run tests..."
-	@go test -v .
+	@go test .
 
 benchmark:
 	@echo "*** Run benchmarks..."
@@ -38,6 +38,9 @@ test-cover: test-cover-builder
 build:
 	@echo "*** Build project..."
 	@go build -v .
+
+build-asm:
+	@go build -a -work -v -gcflags="-S -B -C" .
 
 build-race:
 	@echo "*** Build project with race condition..."

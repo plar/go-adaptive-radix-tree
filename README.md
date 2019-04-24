@@ -15,6 +15,7 @@ It presents the following:
 * Minimum / Maximum value lookups
 * Ordered iteration
 * Prefix based iteration
+* Support keys with null bytes, any byte array could be a key
 
 # Usage
 

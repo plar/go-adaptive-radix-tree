@@ -8,6 +8,7 @@ import (
 const (
 	printValuesAsChar = 1 << iota
 	printValuesAsDecimal
+	printValuesAsHex
 
 	printValueDefault = printValuesAsChar
 )
@@ -105,25 +106,56 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 		}
 		ts.append("]")
 
+	case []keyChar:
+		arr, _ := v.([]keyChar)
+		ts.append("[")
+		for i, b := range arr {
+			if (options & printValuesAsChar) != 0 {
+				if b.Present() {
+					ts.append(fmt.Sprintf("%c", b.Get()))
+				} else {
+					ts.append("·")
+				}
+
+			} else if (options & printValuesAsDecimal) != 0 {
+				if b.Present() {
+					ts.append(fmt.Sprintf("%2d", b.Get()))
+				} else {
+					ts.append("·")
+				}
+			} else if (options & printValuesAsHex) != 0 {
+				if b.Present() {
+					ts.append(fmt.Sprintf("%2x", b.Get()))
+				} else {
+					ts.append("·")
+				}
+			}
+			if (options&(printValuesAsDecimal|printValuesAsHex)) != 0 && i+1 < len(arr) {
+				ts.append(" ")
+			}
+		}
+		ts.append("]")
+
 	case Key:
 		k, _ := v.(Key)
-		ts.append("[").append(string(k)).append("]")
+		ts.append([]byte(k))
 
 	default:
 		ts.append("[")
 		ts.append(fmt.Sprintf("%#v", v))
 		ts.append("]")
 	}
+
 	return ts
 }
 
 func (ts *treeStringer) children(children []*artNode, numChildred int, depth int) {
-	for i := 0; i < len(children); i++ {
-		ts.baseNode(children[i], depth, i, len(children))
+	for i, child := range children {
+		ts.baseNode(child, depth, i, len(children))
 	}
 }
 
-func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []byte, children []*artNode, numChildren int, depth int) {
+func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []keyChar, children []*artNode, numChildren int, depth int) {
 	if prefix != nil {
 		ts.append(pad).append(fmt.Sprintf("prefix(%x): %v", prefixLen, prefix))
 		ts.append(prefix).append("\n")
@@ -170,7 +202,7 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 
 	case Leaf:
 		n := an.leaf()
-		ts.append(pad).append(fmt.Sprintf("key: %v ", n.key)).append(n.key[:]).append("\n")
+		ts.append(pad).append(fmt.Sprintf("key(%d): %v ", len(n.key), n.key)).append(n.key[:]).append("\n")
 
 		if s, ok := n.value.(string); ok {
 			ts.append(pad).append(fmt.Sprintf("val: %v\n", s))
@@ -183,7 +215,6 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	}
 
 	ts.append(pad).append("\n")
-
 }
 
 func (ts *treeStringer) rootNode(an *artNode) {
@@ -209,34 +240,37 @@ DumpNode returns Tree in the human readable format:
  }
 
  Output:
- ─── Node4 (0xc8200f3b30)
-     prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
-     keys: [65 97 0 0] [Aa··]
-     children(2): [0xc8200f3af0 0xc8200f3b70 <nil> <nil>]
-     ├── Leaf (0xc8200f3af0)
-     │   key: [65] [A]
+ ─── Node4 (0xc00008a240)
+     prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
+     keys: [65 97 · ·] [Aa··]
+     children(2): [0xc00008a210 0xc00008a270 <nil> <nil> <nil>]
+     ├── Leaf (0xc00008a210)
+     │   key(1): [65] [A]
      │   val: A
      │
-     ├── Node4 (0xc8200f3b70)
-     │   prefix(0): [0 0 0 0 0 0 0 0 0 0] [··········]
-     │   keys: [0 97 0 0] [·a··]
-     │   children(2): [0xc8200f3b20 0xc8200f3b60 <nil> <nil>]
-     │   ├── Leaf (0xc8200f3b20)
-     │   │   key: [97] [a]
-     │   │   val: a
-     │   │
-     │   ├── Leaf (0xc8200f3b60)
-     │   │   key: [97 97] [aa]
+     ├── Node4 (0xc00008a270)
+     │   prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
+     │   keys: [97 · · ·] [a···]
+     │   children(1): [0xc00008a260 <nil> <nil> <nil> 0xc00008a230]
+     │   ├── Leaf (0xc00008a260)
+     │   │   key(2): [97 97] [aa]
      │   │   val: aa
      │   │
      │   ├── nil
-     │   └── nil
+     │   ├── nil
+     │   ├── nil
+     │   └── Leaf (0xc00008a230)
+     │       key(1): [97] [a]
+     │       val: a
      │
+     │
+     ├── nil
      ├── nil
      └── nil
 */
 func DumpNode(root *artNode) string {
 	ts := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
 	ts.rootNode(root)
+
 	return ts.buf.String()
 }

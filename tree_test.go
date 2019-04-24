@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	//"strings"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,6 +30,34 @@ type testDataset struct {
 }
 
 type testDatasetBuilder func(data *testDataset, tree *tree)
+
+func (stats *treeStats) processStats(node Node) bool {
+	switch node.Kind() {
+	case Node4:
+		stats.node4Count++
+	case Node16:
+		stats.node16Count++
+	case Node48:
+		stats.node48Count++
+	case Node256:
+		stats.node256Count++
+	case Leaf:
+		stats.leafCount++
+	}
+
+	return true
+}
+
+func collectStats(it Iterator) treeStats {
+	stats := treeStats{}
+
+	for it.HasNext() {
+		node, _ := it.Next()
+		stats.processStats(node)
+	}
+
+	return stats
+}
 
 func loadTestFile(path string) [][]byte {
 	file, err := os.Open(path)
@@ -68,20 +97,6 @@ func TestTreeInit(t *testing.T) {
 	tree := New()
 	assert.NotNil(t, tree)
 }
-
-// func TestPoolFactory(t *testing.T) {
-// 	t.SkipNow()
-// 	factory := newPoolObjFactory()
-// 	n4 := factory.newNode48()
-// 	assert.NotNil(t, n4)
-// 	factory.releaseNode(n4)
-
-// 	n4v2 := factory.newNode48()
-// 	assert.True(t, n4 == n4v2)
-
-// 	n4v3 := factory.newNode48()
-// 	assert.NotEqual(t, n4v2, n4v3)
-// }
 
 func TestObjFactory(t *testing.T) {
 	factory := newObjFactory()
@@ -125,7 +140,6 @@ func TestTreeInsertSimilarPrefix(t *testing.T) {
 	v, found := tree.Search(Key{1, 1})
 	assert.True(t, found)
 	assert.Equal(t, 11, v)
-
 }
 
 // An Art Node with a similar prefix should be split into new nodes accordingly
@@ -581,24 +595,8 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
-	stats := treeStats{}
-	tree.ForEach(func(node Node) bool {
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-		return true
-	}, TraverseAll)
-
-	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+	stats := collectStats(tree.Iterator(TraverseAll))
+	assert.Equal(t, treeStats{235886, 113419, 10433, 403, 1}, stats)
 }
 
 func TestTreeTraversalPrefix(t *testing.T) {
@@ -701,24 +699,32 @@ func TestTreeTraversalForEachPrefixWithSimilarKey(t *testing.T) {
 }
 
 func TestTreeTraversalPrefixWords(t *testing.T) {
-	t.SkipNow()
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
 	for _, w := range words {
 		tree.Insert(w, string(w))
 	}
 
-	tree.ForEachPrefix(Key("antis"), func(node Node) bool {
+	foundWords := []string{}
+	tree.ForEachPrefix(Key("antisa"), func(node Node) bool {
 		if node.Kind() != Leaf {
 			return true
 		}
 
-		fmt.Println(string(node.Key()))
-		// if node.Value() != nil {
-		// 	fmt.Println("\tvalue=", node.Value().(string))
-		// }
+		v, _ := node.Value().(string)
+		foundWords = append(foundWords, v)
+
 		return true
 	})
+
+	expected := []string{
+		"antisacerdotal",
+		"antisacerdotalist",
+		"antisaloon",
+		"antisalooner",
+		"antisavage",
+	}
+	assert.Equal(t, expected, foundWords)
 }
 
 func TestTreeIterator(t *testing.T) {
@@ -784,32 +790,6 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	assert.Equal(t, ErrConcurrentModification, err)
 }
 
-func (stats *treeStats) processStats(node Node) bool {
-	switch node.Kind() {
-	case Node4:
-		stats.node4Count++
-	case Node16:
-		stats.node16Count++
-	case Node48:
-		stats.node48Count++
-	case Node256:
-		stats.node256Count++
-	case Leaf:
-		stats.leafCount++
-	}
-	return true
-}
-
-func calcStats(it Iterator) treeStats {
-	stats := treeStats{}
-
-	for it.HasNext() {
-		node, _ := it.Next()
-		stats.processStats(node)
-	}
-	return stats
-}
-
 func TestTreeIterateWordsStats(t *testing.T) {
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
@@ -817,14 +797,14 @@ func TestTreeIterateWordsStats(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
-	stats := calcStats(tree.Iterator(TraverseAll))
-	assert.Equal(t, treeStats{235886, 111616, 12181, 458, 1}, stats)
+	stats := collectStats(tree.Iterator(TraverseAll))
+	assert.Equal(t, treeStats{235886, 113419, 10433, 403, 1}, stats)
 
-	stats = calcStats(tree.Iterator())
+	stats = collectStats(tree.Iterator())
 	assert.Equal(t, treeStats{235886, 0, 0, 0, 0}, stats)
 
-	stats = calcStats(tree.Iterator(TraverseNode))
-	assert.Equal(t, treeStats{0, 111616, 12181, 458, 1}, stats)
+	stats = collectStats(tree.Iterator(TraverseNode))
+	assert.Equal(t, treeStats{0, 113419, 10433, 403, 1}, stats)
 }
 
 func TestTreeInsertAndDeleteAllWords(t *testing.T) {
@@ -834,6 +814,28 @@ func TestTreeInsertAndDeleteAllWords(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
+	for _, w := range words {
+		v, deleted := tree.Delete(w)
+		assert.True(t, deleted)
+		assert.Equal(t, w, v)
+	}
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
+func TestTreeInsertAndDeleteAllHSKWords(t *testing.T) {
+	words := loadTestFile("test/assets/hsk_words.txt")
+	tree := newTree()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+
+	for _, w := range words {
+		v, found := tree.Search(w)
+		assert.Equal(t, w, v, string(w))
+		assert.True(t, found)
+	}
 	for _, w := range words {
 		v, deleted := tree.Delete(w)
 		assert.True(t, deleted)
@@ -954,7 +956,7 @@ func TestTreeAPI(t *testing.T) {
 //
 // Benchmarks
 //
-func BenchmarkTreeInsertWords(b *testing.B) {
+func BenchmarkWordsTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -965,7 +967,7 @@ func BenchmarkTreeInsertWords(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeSearchWords(b *testing.B) {
+func BenchmarkWordsTreeSearch(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
 	for _, w := range words {
@@ -979,7 +981,7 @@ func BenchmarkTreeSearchWords(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeIteratorWords(b *testing.B) {
+func BenchmarkWordsTreeIterator(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
 	for _, w := range words {
@@ -987,11 +989,11 @@ func BenchmarkTreeIteratorWords(b *testing.B) {
 	}
 	b.ResetTimer()
 
-	stats := calcStats(tree.Iterator(TraverseAll))
-	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
+	stats := collectStats(tree.Iterator(TraverseAll))
+	assert.Equal(b, treeStats{235886, 113419, 10433, 403, 1}, stats)
 }
 
-func BenchmarkTreeForEachWords(b *testing.B) {
+func BenchmarkWordsTreeForEach(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
 	tree := New()
 	for _, w := range words {
@@ -1001,7 +1003,7 @@ func BenchmarkTreeForEachWords(b *testing.B) {
 
 	stats := treeStats{}
 	tree.ForEach(stats.processStats, TraverseAll)
-	assert.Equal(b, treeStats{235886, 111616, 12181, 458, 1}, stats)
+	assert.Equal(b, treeStats{235886, 113419, 10433, 403, 1}, stats)
 
 	stats = treeStats{}
 	tree.ForEach(stats.processStats, TraverseLeaf)
@@ -1009,10 +1011,10 @@ func BenchmarkTreeForEachWords(b *testing.B) {
 
 	stats = treeStats{}
 	tree.ForEach(stats.processStats, TraverseNode)
-	assert.Equal(b, treeStats{0, 111616, 12181, 458, 1}, stats)
+	assert.Equal(b, treeStats{0, 113419, 10433, 403, 1}, stats)
 }
 
-func BenchmarkTreeInsertUUIDs(b *testing.B) {
+func BenchmarkUUIDsTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/uuid.txt")
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -1023,7 +1025,7 @@ func BenchmarkTreeInsertUUIDs(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeSearchUUIDs(b *testing.B) {
+func BenchmarkUUIDsTreeSearch(b *testing.B) {
 	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
 	for _, w := range words {
@@ -1037,7 +1039,7 @@ func BenchmarkTreeSearchUUIDs(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeIteratorUUIDs(b *testing.B) {
+func BenchmarkUUIDsTreeIterator(b *testing.B) {
 	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
 	for _, w := range words {
@@ -1045,26 +1047,11 @@ func BenchmarkTreeIteratorUUIDs(b *testing.B) {
 	}
 	b.ResetTimer()
 
-	stats := treeStats{}
-	for it := tree.Iterator(TraverseAll); it.HasNext(); {
-		node, _ := it.Next()
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-	}
+	stats := collectStats(tree.Iterator(TraverseAll))
 	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
 }
 
-func BenchmarkTreeForEachUUIDs(b *testing.B) {
+func BenchmarkUUIDsTreeForEach(b *testing.B) {
 	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
 	for _, w := range words {
@@ -1072,21 +1059,316 @@ func BenchmarkTreeForEachUUIDs(b *testing.B) {
 	}
 	b.ResetTimer()
 
-	stats := treeStats{}
-	tree.ForEach(func(node Node) bool {
-		switch node.Kind() {
-		case Node4:
-			stats.node4Count++
-		case Node16:
-			stats.node16Count++
-		case Node48:
-			stats.node48Count++
-		case Node256:
-			stats.node256Count++
-		case Leaf:
-			stats.leafCount++
-		}
-		return true
-	}, TraverseAll)
+	stats := collectStats(tree.Iterator(TraverseAll))
 	assert.Equal(b, treeStats{100000, 32288, 5120, 0, 0}, stats)
+}
+
+func BenchmarkHSKTreeInsert(b *testing.B) {
+	words := loadTestFile("test/assets/hsk_words.txt")
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		tree := New()
+		for _, w := range words {
+			tree.Insert(w, w)
+		}
+	}
+}
+
+func BenchmarkHSKTreeSearch(b *testing.B) {
+	words := loadTestFile("test/assets/hsk_words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		for _, w := range words {
+			tree.Search(w)
+		}
+	}
+}
+
+func BenchmarkHSKTreeIterator(b *testing.B) {
+	words := loadTestFile("test/assets/hsk_words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+
+	stats := collectStats(tree.Iterator(TraverseAll))
+	assert.Equal(b, treeStats{4995, 1630, 276, 21, 4}, stats)
+}
+
+func BenchmarkHSKTreeForEach(b *testing.B) {
+	words := loadTestFile("test/assets/hsk_words.txt")
+	tree := New()
+	for _, w := range words {
+		tree.Insert(w, w)
+	}
+	b.ResetTimer()
+
+	stats := collectStats(tree.Iterator(TraverseAll))
+	assert.Equal(b, treeStats{4995, 1630, 276, 21, 4}, stats)
+}
+
+// new tests
+func TestTreeDumpAppend(t *testing.T) {
+	ts0 := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
+	ts0.append([]uint16{1, 2, 3})
+	assert.Equal(t, "[[]uint16{0x1, 0x2, 0x3}]", ts0.buf.String())
+
+	ts1 := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
+	ts1.append([]byte{0, 'a'})
+	assert.Equal(t, "[·a]", ts1.buf.String())
+}
+
+func TestTreeInsertAndSearchKeyWithNull(t *testing.T) {
+	tree := newTree()
+	terms := []string{"ab\x00", "ab", "ad", "ac"}
+
+	for _, term := range terms {
+		tree.Insert(Key(term), term)
+	}
+
+	for _, term := range terms {
+		v, found := tree.Search(Key(term))
+		assert.True(t, found)
+		assert.Equal(t, term, v)
+	}
+
+	expected := []string{"ab", "ab\x00", "ac", "ad"}
+	traversal := []string{}
+	tree.ForEach(func(node Node) bool {
+		traversal = append(traversal, string(node.Key()))
+		return true
+	}, TraverseLeaf)
+
+	assert.Equal(t, expected, traversal)
+
+	traversal = []string{}
+	it := tree.Iterator(TraverseLeaf)
+	for it.HasNext() {
+		leaf, _ := it.Next()
+		traversal = append(traversal, string(leaf.Key()))
+	}
+	assert.Equal(t, expected, traversal)
+}
+
+func TestNodesWithNullKeys4(t *testing.T) {
+	tree := newTree()
+	terms := []string{"aa", "aa\x00", "aac", "aab\x00"}
+	for _, term := range terms {
+		tree.Insert(Key(term), term)
+	}
+
+	for _, term := range terms {
+		v, found := tree.Search(Key(term))
+		assert.True(t, found)
+		assert.Equal(t, term, v)
+	}
+}
+
+func TestNodesWithNullKeys16(t *testing.T) {
+	tree := newTree()
+	terms := []string{ // shuffled, no order
+		"aad\x00",
+		"aam\x00",
+		"aae\x00",
+		"aal\x00",
+		"aab",
+		"aaq\x00",
+		"aa",
+		"aax\x00",
+		"aaf\x00",
+		"aag\x00",
+		"aaz\x00",
+		"aav\x00",
+		"aaj\x00",
+		"aak\x00",
+		"aah\x00",
+		"aac\x00",
+		"aa\x00",	}
+
+	for _, term := range terms {
+		tree.Insert(Key(term), term)
+	}
+
+	for _, term := range terms {
+		v, found := tree.Search(Key(term))
+		assert.True(t, found)
+		assert.Equal(t, term, v)
+	}
+
+	v, found := tree.Minimum()
+	assert.Equal(t, "aa", v)
+	assert.True(t, found)
+
+	expected := []string{
+		"aa",
+		"aa\x00",
+		"aab",
+		"aac\x00",
+		"aad\x00",
+		"aae\x00",
+		"aaf\x00",
+		"aag\x00",
+		"aah\x00",
+		"aaj\x00",
+		"aak\x00",
+		"aal\x00",
+		"aam\x00",
+		"aaq\x00",
+		"aav\x00",
+		"aax\x00",
+		"aaz\x00",
+
+	}
+	traversal := []string{}
+	tree.ForEach(func(node Node) bool {
+		traversal = append(traversal, string(node.Key()))
+		return true
+	}, TraverseLeaf)
+	assert.Equal(t, expected, traversal)
+
+}
+
+func TestNodesWithNullKeys48(t *testing.T) {
+	tree := newTree()
+	terms := []string{
+		"aab",
+		"aa\x00",
+		"aac\x00",
+		"aad\x00",
+		"aae\x00",
+		"aaf\x00",
+		"aag\x00",
+		"aah\x00",
+		"aaj\x00",
+		"aak\x00",
+		"aal\x00",
+		"aaz\x00",
+		"aax\x00",
+		"aav\x00",
+		"aam\x00",
+		"aaq\x00",
+		"aa",
+	}
+
+	for _, term := range terms {
+		tree.Insert(Key(term), term)
+	}
+
+	for _, term := range terms {
+		v, found := tree.Search(Key(term))
+		assert.True(t, found)
+		assert.Equal(t, term, v)
+	}
+
+	// find minimum term with null prefix
+	v, found := tree.Minimum()
+	assert.True(t, found)
+	assert.Equal(t, "aa", v)
+
+	// traverse include term with null prefix
+	termsCopy := make([]string, len(terms))
+	copy(termsCopy, terms[:])
+	traversal := []string{}
+	tree.ForEach(func(node Node) bool {
+		s, _ := node.Value().(string)
+		traversal = append(traversal, s)
+		return true
+	}, TraverseLeaf)
+	sort.Strings(termsCopy) // traversal should be in sorted order
+	assert.Equal(t, termsCopy, traversal)
+
+	// delete all terms
+	for _, term := range terms {
+		v, deleted := tree.Delete(Key(term))
+		assert.True(t, deleted)
+		assert.Equal(t, term, v)
+	}
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
+func TestNodesWithNullKeys256(t *testing.T) {
+	tree := newTree()
+
+	// build list of terms which will use node256
+	terms := []string{"b"}
+	for i0 := 0; i0 <= 260; i0++ {
+		var term string
+		if i0 < 130 {
+			term = fmt.Sprintf("a%v", string(i0))
+		} else {
+			term = fmt.Sprintf("b%v", string(i0))
+		}
+		terms = append(terms, term)
+	}
+
+	for _, term := range terms {
+		_, updated := tree.Insert(Key(term), term)
+		assert.False(t, updated)
+	}
+
+	// insert a term with null prefix to node256
+	term := "a"
+	_, updated := tree.Insert(Key(term), term)
+	assert.False(t, updated)
+
+	for _, term := range terms {
+		v, found := tree.Search(Key(term))
+		assert.True(t, found)
+		assert.Equal(t, term, v)
+	}
+
+	// find minimum term with null prefix
+	v, found := tree.Minimum()
+	assert.True(t, found)
+	assert.Equal(t, term, v)
+
+	// traverse include term with null prefix
+	termsCopy := make([]string, len(terms))
+	copy(termsCopy, terms[:])
+	termsCopy = append(termsCopy, term)
+	traversal := []string{}
+	tree.ForEach(func(node Node) bool {
+		s, _ := node.Value().(string)
+		traversal = append(traversal, s)
+		return true
+	}, TraverseLeaf)
+	sort.Strings(termsCopy)
+	assert.Equal(t, termsCopy, traversal)
+
+	// delete a term with null prefix from node256
+	v, deleted := tree.Delete(Key(term))
+	assert.True(t, deleted)
+	assert.Equal(t, term, v)
+
+	for _, term := range terms {
+		v, deleted := tree.Delete(Key(term))
+		assert.True(t, deleted)
+		assert.Equal(t, term, v)
+	}
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
+func TestTreeInsertAndSearchKeyWithUnicodeAccentChar(t *testing.T) {
+	tree := newTree()
+	a := "a"
+	accent := []byte{0x61, 0x00, 0x60} // ‘a' followed by unicode accent character.
+	tree.Insert([]byte(a), a)
+	tree.Insert(accent, string(accent))
+
+	v, found := tree.Search([]byte("a"))
+	assert.True(t, found)
+	assert.Equal(t, a, v)
+
+	v, found = tree.Search(accent)
+	assert.True(t, found)
+	assert.Equal(t, string(accent), v)
 }

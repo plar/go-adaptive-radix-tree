@@ -12,6 +12,7 @@ type nodeFactory interface {
 	newLeaf(key Key, value interface{}) *artNode
 }
 
+// make sure that objFactory implements all methods of nodeFactory interface
 var _ nodeFactory = &objFactory{}
 
 var factory = newObjFactory()
