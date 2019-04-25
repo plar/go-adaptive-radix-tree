@@ -65,21 +65,28 @@ The go-adaptive-radix-tree library overperforms go-art library.
 The go-adaptive-radix-tree doesn't allocate any memory during search operations.
 It also provides prefix based iteration over the tree.
 
-Benchmarks were performed on datasets extracted from the [2] project:
-- Words dataset contains list of 235,886 english words.
-- UUIDs dataset contains 100,000 uuids.
+Benchmarks were performed on datasets extracted from different projects:
+- Words dataset contains list of 235,886 english words. [2]
+- UUIDs dataset contains 100,000 uuids.                 [2]
+- HSK Words dataset contains 4,995 words.               [4]
 
 |**go-adaptive-radix-tree**| #  | Average time      |Bytes per operation|Allocs per operation |
 |:-------------------------|---:|------------------:|------------------:|--------------------:|
-|       Tree Insert Words  | 10 | 163,837,807 ns/op |   40,316,974 B/op | 1,218,299 allocs/op |
-|       Tree Search Words  | 30 |  48,515,927 ns/op |            0 B/op |         0 allocs/op |
-|       Tree Insert UUIDs  | 20 | 102,329,315 ns/op |   18,974,661 B/op |   485,104 allocs/op |
-|       Tree Search UUIDs  | 50 |  38,480,097 ns/op |            0 B/op |         0 allocs/op |
+|       Tree Insert Words  | 10 | 146,326,506 ns/op |   41,299,883 B/op | 1,326,167 allocs/op |
+|       Tree Search Words  | 30 |  44,075,933 ns/op |            0 B/op |         0 allocs/op |
+|       Tree Insert UUIDs  | 20 |  86,062,471 ns/op |   19,638,904 B/op |   547,648 allocs/op |
+|       Tree Search UUIDs  | 50 |  35,808,749 ns/op |            0 B/op |         0 allocs/op |
 |**go-art**                |    |                   |                   |                     |
 |       Tree Insert Words  |  5 | 272,047,975 ns/op |   81,628,987 B/op | 2,547,316 allocs/op |
 |       Tree Search Words  | 10 | 129,011,177 ns/op |   13,272,278 B/op | 1,659,033 allocs/op |
 |       Tree Insert UUIDs  | 10 | 140,309,246 ns/op |   33,678,160 B/op |   874,561 allocs/op |
 |       Tree Search UUIDs  | 20 |  82,120,943 ns/op |    3,883,131 B/op |   485,391 allocs/op |
+
+To see more benchmarks just run
+
+```
+$ make benchmark
+```
 
 # References
 
@@ -88,3 +95,5 @@ Benchmarks were performed on datasets extracted from the [2] project:
 [2] [C99 implementation of the Adaptive Radix Tree](https://github.com/armon/libart)
 
 [3] [Other Adaptive Radix Tree implementation in Go](https://github.com/kellydunn/go-art)
+
+[4] [HSK Words](http://hskhsk.pythonanywhere.com/hskwords). HSK(Hanyu Shuiping Kaoshi) - Standardized test of Standard Mandarin Chinese proficiency.
