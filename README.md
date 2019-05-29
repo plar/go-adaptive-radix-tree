@@ -5,17 +5,17 @@ An Adaptive Radix Tree Implementation in Go
 
 This library provides a Go implementation of the Adaptive Radix Tree (ART).
 
-It presents the following:
-* Lookup performance surpasses highly tuned
-* Supporting very efficient insertions and deletions
+Features:
+* Lookup performance surpasses highly tuned alternatives
+* Support for highly efficient insertions and deletions
 * Space efficient
 * Performance is comparable to hash tables
 * Maintains the data in sorted order, which enables additional operations like range scan and prefix lookup
-* O(k) search/insert/delete operations, where is k is the length of the key
+* `O(k)` search/insert/delete operations, where `k` is the length of the key
 * Minimum / Maximum value lookups
 * Ordered iteration
-* Prefix based iteration
-* Support keys with null bytes, any byte array could be a key
+* Prefix-based iteration
+* Support for keys with null bytes, any byte array could be a key
 
 # Usage
 
@@ -61,14 +61,13 @@ Check out the documentation on [godoc.org](http://godoc.org/github.com/plar/go-a
 
 # Performance
 
-The go-adaptive-radix-tree library overperforms go-art library.
-The go-adaptive-radix-tree doesn't allocate any memory during search operations.
+[plar/go-adaptive-radix-tree](https://github.com/plar/go-adaptive-radix-tree) outperforms [kellydunn/go-art](https://github.com/kellydunn/go-art) by avoiding memory allocations during search operations.
 It also provides prefix based iteration over the tree.
 
 Benchmarks were performed on datasets extracted from different projects:
-- Words dataset contains list of 235,886 english words. [2]
-- UUIDs dataset contains 100,000 uuids.                 [2]
-- HSK Words dataset contains 4,995 words.               [4]
+- The "Words" dataset contains a list of 235,886 english words. [2]
+- The "UUIDs" dataset contains 100,000 uuids.                   [2]
+- The "HSK Words" dataset contains 4,995 words.                 [4]
 
 |**go-adaptive-radix-tree**| #  | Average time      |Bytes per operation|Allocs per operation |
 |:-------------------------|---:|------------------:|------------------:|--------------------:|
@@ -94,6 +93,6 @@ $ make benchmark
 
 [2] [C99 implementation of the Adaptive Radix Tree](https://github.com/armon/libart)
 
-[3] [Other Adaptive Radix Tree implementation in Go](https://github.com/kellydunn/go-art)
+[3] [Another Adaptive Radix Tree implementation in Go](https://github.com/kellydunn/go-art)
 
 [4] [HSK Words](http://hskhsk.pythonanywhere.com/hskwords). HSK(Hanyu Shuiping Kaoshi) - Standardized test of Standard Mandarin Chinese proficiency.
