@@ -19,7 +19,7 @@ Features:
 
 # Usage
 
-```
+```go
 package main
 
 import (
