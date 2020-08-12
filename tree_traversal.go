@@ -1,5 +1,12 @@
 package art
 
+type traverseAction int
+
+const (
+	traverseStop traverseAction = iota
+	traverseContinue
+)
+
 type iteratorLevel struct {
 	node     *artNode
 	childIdx int
@@ -56,27 +63,29 @@ func (t *tree) ForEach(callback Callback, opts ...int) {
 	t.recursiveForEach(t.root, traverseFilter(options, callback))
 }
 
-func (t *tree) recursiveForEach(current *artNode, callback Callback) {
+func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAction {
 	if current == nil {
-		return
+		return traverseContinue
 	}
 
 	if !callback(current) {
-		return
+		return traverseStop
 	}
 
 	switch current.kind {
 	case Node4:
-		t.forEachChildren(current.node4().children[:], callback)
+		return t.forEachChildren(current.node4().children[:], callback)
 
 	case Node16:
-		t.forEachChildren(current.node16().children[:], callback)
+		return t.forEachChildren(current.node16().children[:], callback)
 
 	case Node48:
 		node := current.node48()
 		child := node.children[current.maxChildren()]
 		if child != nil {
-			t.recursiveForEach(child, callback)
+			if t.recursiveForEach(child, callback) == traverseStop {
+				return traverseStop
+			}
 		}
 
 		for _, idx := range node.keys {
@@ -86,35 +95,45 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) {
 
 			child := node.children[idx.Get()]
 			if child != nil {
-				t.recursiveForEach(child, callback)
+				if t.recursiveForEach(child, callback) == traverseStop {
+					return traverseStop
+				}
 			}
 		}
 
 	case Node256:
-		t.forEachChildren(current.node256().children[:], callback)
+		return t.forEachChildren(current.node256().children[:], callback)
 	}
+
+	return traverseContinue
 }
 
-func (t *tree) forEachChildren(children []*artNode, callback Callback) {
-	nullChild := children[len(children) - 1]
-	if  nullChild != nil {
-		t.recursiveForEach(nullChild, callback)
+func (t *tree) forEachChildren(children []*artNode, callback Callback) traverseAction {
+	nullChild := children[len(children)-1]
+	if nullChild != nil {
+		if t.recursiveForEach(nullChild, callback) == traverseStop {
+			return traverseStop
+		}
 	}
 
 	for _, child := range children {
 		if child != nil && child != nullChild {
-			t.recursiveForEach(child, callback)
+			if t.recursiveForEach(child, callback) == traverseStop {
+				return traverseStop
+			}
 		}
 	}
+
+	return traverseContinue
 }
 
 func (t *tree) ForEachPrefix(key Key, callback Callback) {
 	t.forEachPrefix(t.root, key, callback)
 }
 
-func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
+func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) traverseAction {
 	if current == nil {
-		return
+		return traverseContinue
 	}
 
 	depth := 0
@@ -122,17 +141,21 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 		if current.isLeaf() {
 			leaf := current.leaf()
 			if leaf.prefixMatch(key) {
-				callback(current)
+				if !callback(current) {
+					return traverseStop
+				}
 			}
-			return
+			break
 		}
 
 		if depth == len(key) {
 			leaf := current.minimum()
 			if leaf.prefixMatch(key) {
-				t.recursiveForEach(current, callback)
+				if t.recursiveForEach(current, callback) == traverseStop {
+					return traverseStop
+				}
 			}
-			return
+			break
 		}
 
 		node := current.node()
@@ -143,10 +166,10 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 			}
 
 			if prefixLen == 0 {
-				return
+				break
 			} else if depth+prefixLen == len(key) {
-				t.recursiveForEach(current, callback)
-				return
+				return t.recursiveForEach(current, callback)
+
 			}
 			depth += node.prefixLen
 		}
@@ -154,11 +177,13 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) {
 		// Find a child to recursive to
 		next := current.findChild(key.charAt(depth))
 		if *next == nil {
-			return
+			break
 		}
 		current = *next
 		depth++
 	}
+
+	return traverseContinue
 }
 
 // Iterator pattern
@@ -214,7 +239,7 @@ func (ti *iterator) Next() (Node, error) {
 const nullIdx = -1
 
 func nextChild(childIdx int, children []*artNode) ( /*nextChildIdx*/ int /*nextNode*/, *artNode) {
-	nullChild := children[len(children) - 1]
+	nullChild := children[len(children)-1]
 	if childIdx == nullIdx {
 		if nullChild != nil {
 			return 0, nullChild
@@ -253,7 +278,7 @@ func (ti *iterator) next() {
 			nullChild := node.children[curNode.maxChildren()]
 			if curChildIdx == nullIdx {
 				if nullChild == nil {
-					curChildIdx = 0  // try from 0 based child
+					curChildIdx = 0 // try from 0 based child
 				} else {
 					nextChildIdx = 0 // we have a child with null suffix
 					nextNode = nullChild
