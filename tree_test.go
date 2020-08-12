@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"testing"
-	//"strings"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -693,9 +692,124 @@ func TestTreeTraversalForEachPrefixWithSimilarKey(t *testing.T) {
 	tree.Insert(Key("abc1"), "1")
 	tree.Insert(Key("abc2"), "2")
 
-	tree.ForEachPrefix(Key("abc3"), func(node Node) bool {
+	totalKeys := 0
+	tree.ForEachPrefix(Key("abc"), func(node Node) bool {
+		if node.Kind() == Leaf {
+			totalKeys++
+		}
 		return true
 	})
+
+	assert.Equal(t, 3, totalKeys)
+}
+
+func TestTreeTraversalForEachPrefixConditionalCallback(t *testing.T) {
+	tree := newTree()
+	tree.Insert(Key("America#California#Irvine"), 1)
+	tree.Insert(Key("America#California#Sanfrancisco"), 2)
+	tree.Insert(Key("America#California#LosAngeles"), 3)
+
+	totalCalls := 0
+	tree.ForEachPrefix(Key("Amer"), func(node Node) (cont bool) {
+		if node.Kind() == Leaf {
+			totalCalls++
+		}
+		return true
+	})
+	assert.Equal(t, 3, totalCalls)
+
+	totalCalls = 0
+	tree.ForEachPrefix(Key("Amer"), func(node Node) (cont bool) {
+		if node.Kind() == Leaf {
+			totalCalls++
+			if string(node.Key()) == "America#California#Irvine" {
+				return false
+			}
+		}
+		return true
+	})
+
+	assert.Equal(t, 1, totalCalls)
+}
+
+func TestTreeTraversalForEachCallbackStop(t *testing.T) {
+	tree := New()
+	tree.Insert(Key("0"), "0")
+	tree.Insert(Key("1"), "1")
+	tree.Insert(Key("11"), "11")
+	tree.Insert(Key("111"), "111")
+	tree.Insert(Key("1111"), "1111")
+	tree.Insert(Key("11111"), "11111")
+
+	totalCalls := 0
+	tree.ForEach(func(node Node) (cont bool) {
+		totalCalls++
+		if string(node.Key()) == "1111" {
+			return false
+		}
+		return true
+	})
+	assert.Equal(t, 5, totalCalls)
+
+	words := loadTestFile("test/assets/words.txt")
+	tree = New()
+	for _, w := range words {
+		tree.Insert(w, string(w))
+	}
+
+	totalCalls = 0
+	tree.ForEach(func(node Node) (cont bool) {
+		totalCalls++
+		if string(node.Key()) == "A" { // node48 with maxChildren?
+			return false
+		}
+		return true
+	})
+	assert.Equal(t, 1, totalCalls)
+
+	totalCalls = 0
+	tree.ForEach(func(node Node) (cont bool) {
+		totalCalls++
+		if string(node.Key()) == "Aani" { // node48 'a' children?
+			return false
+		}
+		return true
+	})
+
+	assert.Equal(t, 2, totalCalls)
+
+}
+
+func TestTreeTraversalForEachPrefixCallbackStop(t *testing.T) {
+	tree := New()
+	tree.Insert(Key("0"), "0")
+	tree.Insert(Key("1"), "1")
+	tree.Insert(Key("11"), "11")
+	tree.Insert(Key("111"), "111")
+	tree.Insert(Key("1111"), "1111")
+	tree.Insert(Key("11111"), "11111")
+
+	totalCalls := 0
+	tree.ForEachPrefix(Key("0"), func(node Node) (cont bool) {
+		totalCalls++
+		return false
+	})
+	assert.Equal(t, 1, totalCalls)
+
+	totalCalls = 0
+	tree.ForEachPrefix(Key("11"), func(node Node) (cont bool) {
+		totalCalls++
+		return false
+	})
+	assert.Equal(t, 1, totalCalls)
+
+	totalCalls = 0
+	tree.ForEachPrefix(Key("nokey"), func(node Node) (cont bool) {
+		// should be never called
+		totalCalls++
+		return false
+	})
+	assert.Equal(t, 0, totalCalls)
 }
 
 func TestTreeTraversalPrefixWords(t *testing.T) {
@@ -1188,7 +1302,7 @@ func TestNodesWithNullKeys16(t *testing.T) {
 		"aak\x00",
 		"aah\x00",
 		"aac\x00",
-		"aa\x00",	}
+		"aa\x00"}
 
 	for _, term := range terms {
 		tree.Insert(Key(term), term)
@@ -1222,7 +1336,6 @@ func TestNodesWithNullKeys16(t *testing.T) {
 		"aav\x00",
 		"aax\x00",
 		"aaz\x00",
-
 	}
 	traversal := []string{}
 	tree.ForEach(func(node Node) bool {
