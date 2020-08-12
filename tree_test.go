@@ -1414,9 +1414,9 @@ func TestNodesWithNullKeys256(t *testing.T) {
 	for i0 := 0; i0 <= 260; i0++ {
 		var term string
 		if i0 < 130 {
-			term = fmt.Sprintf("a%v", string(i0))
+			term = fmt.Sprintf("a%v", i0)
 		} else {
-			term = fmt.Sprintf("b%v", string(i0))
+			term = fmt.Sprintf("b%v", i0)
 		}
 		terms = append(terms, term)
 	}
