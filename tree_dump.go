@@ -106,36 +106,6 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 		}
 		ts.append("]")
 
-	case []keyChar:
-		arr, _ := v.([]keyChar)
-		ts.append("[")
-		for i, b := range arr {
-			if (options & printValuesAsChar) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%c", b.Get()))
-				} else {
-					ts.append("·")
-				}
-
-			} else if (options & printValuesAsDecimal) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%2d", b.Get()))
-				} else {
-					ts.append("·")
-				}
-			} else if (options & printValuesAsHex) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%2x", b.Get()))
-				} else {
-					ts.append("·")
-				}
-			}
-			if (options&(printValuesAsDecimal|printValuesAsHex)) != 0 && i+1 < len(arr) {
-				ts.append(" ")
-			}
-		}
-		ts.append("]")
-
 	case Key:
 		k, _ := v.(Key)
 		ts.append([]byte(k))
@@ -149,21 +119,62 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 	return ts
 }
 
-func (ts *treeStringer) children(children []*artNode, numChildred int, depth int) {
+func (ts *treeStringer) appendKey(keys []byte, present []byte, opts ...int) *treeStringer {
+	options := 0
+	for _, opt := range opts {
+		options |= opt
+	}
+
+	if options == 0 {
+		options = printValueDefault
+	}
+
+	ts.append("[")
+	for i, b := range keys {
+		if (options & printValuesAsChar) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%c", b))
+			} else {
+				ts.append("·")
+			}
+
+		} else if (options & printValuesAsDecimal) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%2d", b))
+			} else {
+				ts.append("·")
+			}
+		} else if (options & printValuesAsHex) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%2x", b))
+			} else {
+				ts.append("·")
+			}
+		}
+		if (options&(printValuesAsDecimal|printValuesAsHex)) != 0 && i+1 < len(keys) {
+			ts.append(" ")
+		}
+	}
+	ts.append("]")
+
+	return ts
+}
+
+func (ts *treeStringer) children(children []*artNode, numChildred uint16, depth int) {
 	for i, child := range children {
 		ts.baseNode(child, depth, i, len(children))
 	}
 }
 
-func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []keyChar, children []*artNode, numChildren int, depth int) {
+func (ts *treeStringer) node(pad string, prefixLen uint32, prefix []byte, keys []byte, present []byte, children []*artNode, numChildren uint16, depth int) {
 	if prefix != nil {
 		ts.append(pad).append(fmt.Sprintf("prefix(%x): %v", prefixLen, prefix))
 		ts.append(prefix).append("\n")
 	}
 
 	if keys != nil {
-		ts.append(pad).append("keys: ").append(keys, printValuesAsDecimal).append(" ")
-		ts.append(keys, printValuesAsChar).append("\n")
+		ts.append(pad).append("keys: ").appendKey(keys, present, printValuesAsDecimal).append(" ")
+		ts.appendKey(keys, present, printValuesAsChar).append("\n")
 	}
 
 	ts.append(pad).append(fmt.Sprintf("children(%v): %+v\n", numChildren, children))
@@ -181,24 +192,20 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	ts.append(fmt.Sprintf("%v (%p)\n", an.kind, an))
 	switch an.kind {
 	case Node4:
-		n := an.node()
 		nn := an.node4()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth)
 
 	case Node16:
-		n := an.node()
 		nn := an.node16()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth)
 
 	case Node48:
-		n := an.node()
 		nn := an.node48()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth)
 
 	case Node256:
-		n := an.node()
 		nn := an.node256()
-		ts.node(pad, n.prefixLen, n.prefix[:], nil, nn.children[:], n.numChildren, depth)
+		ts.node(pad, an.prefixLen, an.prefix[:], nil, nil, nn.children[:], an.numChildren, depth)
 
 	case Leaf:
 		n := an.leaf()

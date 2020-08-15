@@ -84,12 +84,12 @@ func TestTreeLongestCommonPrefix(t *testing.T) {
 
 	l1 := factory.newLeaf(Key("abcdefg12345678"), "abcdefg12345678").leaf()
 	l2 := factory.newLeaf(Key("abcdefg!@#$%^&*"), "abcdefg!@#$%^&*").leaf()
-	assert.Equal(t, 7, tree.longestCommonPrefix(l1, l2, 0))
-	assert.Equal(t, 3, tree.longestCommonPrefix(l1, l2, 4))
+	assert.Equal(t, uint32(7), tree.longestCommonPrefix(l1, l2, 0))
+	assert.Equal(t, uint32(3), tree.longestCommonPrefix(l1, l2, 4))
 
 	l1 = factory.newLeaf(Key("abcdefg12345678"), "abcdefg12345678").leaf()
 	l2 = factory.newLeaf(Key("defg!@#$%^&*"), "defg!@#$%^&*").leaf()
-	assert.Equal(t, 0, tree.longestCommonPrefix(l1, l2, 0))
+	assert.Equal(t, uint32(0), tree.longestCommonPrefix(l1, l2, 0))
 }
 
 func TestTreeInit(t *testing.T) {
@@ -923,9 +923,16 @@ func TestTreeIterateWordsStats(t *testing.T) {
 
 func TestTreeInsertAndDeleteAllWords(t *testing.T) {
 	words := loadTestFile("test/assets/words.txt")
+
 	tree := newTree()
 	for _, w := range words {
 		tree.Insert(w, w)
+	}
+
+	for _, w := range words {
+		v, found := tree.Search(w)
+		assert.Equal(t, w, v, string(w))
+		assert.True(t, found)
 	}
 
 	for _, w := range words {
@@ -950,6 +957,7 @@ func TestTreeInsertAndDeleteAllHSKWords(t *testing.T) {
 		assert.Equal(t, w, v, string(w))
 		assert.True(t, found)
 	}
+
 	for _, w := range words {
 		v, deleted := tree.Delete(w)
 		assert.True(t, deleted)
@@ -1101,6 +1109,7 @@ func BenchmarkWordsTreeIterator(b *testing.B) {
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))
@@ -1369,7 +1378,9 @@ func TestNodesWithNullKeys48(t *testing.T) {
 	}
 
 	for _, term := range terms {
+		// fmt.Println("==================================Finma treee=============", string(term))
 		tree.Insert(Key(term), term)
+		// fmt.Println(tree)
 	}
 
 	for _, term := range terms {
@@ -1397,6 +1408,8 @@ func TestNodesWithNullKeys48(t *testing.T) {
 
 	// delete all terms
 	for _, term := range terms {
+		// fmt.Println(tree)
+		// fmt.Printf("del key=%v\n", string(term))
 		v, deleted := tree.Delete(Key(term))
 		assert.True(t, deleted)
 		assert.Equal(t, term, v)

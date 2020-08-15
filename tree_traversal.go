@@ -88,12 +88,12 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAct
 			}
 		}
 
-		for _, idx := range node.keys {
-			if idx.Absent() {
+		for i, c := range node.keys {
+			if node.present[i] == 0 {
 				continue
 			}
 
-			child := node.children[idx.Get()]
+			child := node.children[c]
 			if child != nil {
 				if t.recursiveForEach(child, callback) == traverseStop {
 					return traverseStop
@@ -136,7 +136,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 		return traverseContinue
 	}
 
-	depth := 0
+	depth := uint32(0)
 	for current != nil {
 		if current.isLeaf() {
 			leaf := current.leaf()
@@ -148,7 +148,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 			break
 		}
 
-		if depth == len(key) {
+		if depth == uint32(len(key)) {
 			leaf := current.minimum()
 			if leaf.prefixMatch(key) {
 				if t.recursiveForEach(current, callback) == traverseStop {
@@ -158,7 +158,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 			break
 		}
 
-		node := current.node()
+		node := current
 		if node.prefixLen > 0 {
 			prefixLen := current.matchDeep(key, depth)
 			if prefixLen > node.prefixLen {
@@ -167,7 +167,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 
 			if prefixLen == 0 {
 				break
-			} else if depth+prefixLen == len(key) {
+			} else if depth+prefixLen == uint32(len(key)) {
 				return t.recursiveForEach(current, callback)
 
 			}
@@ -175,7 +175,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 		}
 
 		// Find a child to recursive to
-		next := current.findChild(key.charAt(depth))
+		next := current.findChild(key.charAt(int(depth)), key.valid(int(depth)))
 		if *next == nil {
 			break
 		}
@@ -287,11 +287,11 @@ func (ti *iterator) next() {
 			}
 
 			for i := curChildIdx; i < len(node.keys); i++ {
-				idx := node.keys[byte(i)]
-				if idx.Absent() {
+				if node.present[i] == 0 {
 					continue
 				}
-				child := node.children[idx.Get()]
+
+				child := node.children[node.keys[i]]
 				if child != nil && child != nullChild {
 					nextChildIdx = i + 1
 					nextNode = child

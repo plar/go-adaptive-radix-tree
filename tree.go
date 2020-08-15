@@ -34,7 +34,7 @@ func (t *tree) Delete(key Key) (Value, bool) {
 
 func (t *tree) Search(key Key) (Value, bool) {
 	current := t.root
-	depth := 0
+	depth := uint32(0)
 	for current != nil {
 		if current.isLeaf() {
 			leaf := current.leaf()
@@ -45,16 +45,15 @@ func (t *tree) Search(key Key) (Value, bool) {
 			return nil, false
 		}
 
-		node := current.node()
-		if node.prefixLen > 0 {
-			prefixLen := node.match(key, depth)
-			if prefixLen != min(node.prefixLen, MaxPrefixLen) {
+		if current.prefixLen > 0 {
+			prefixLen := current.match(key, depth)
+			if prefixLen != min(current.prefixLen, MaxPrefixLen) {
 				return nil, false
 			}
-			depth += node.prefixLen
+			depth += current.prefixLen
 		}
 
-		next := current.findChild(key.charAt(depth))
+		next := current.findChild(key.charAt(int(depth)), key.valid(int(depth)))
 		if *next != nil {
 			current = *next
 		} else {
@@ -94,7 +93,7 @@ func (t *tree) Size() int {
 	return t.size
 }
 
-func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth int) (Value, bool) {
+func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth uint32) (Value, bool) {
 	current := *curNode
 	if current == nil {
 		replaceRef(curNode, factory.newLeaf(key, value))
@@ -119,14 +118,14 @@ func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth in
 		newNode.setPrefix(key[depth:], leafsLCP)
 		depth += leafsLCP
 
-		newNode.addChild(leaf.key.charAt(depth), current)
-		newNode.addChild(leaf2.key.charAt(depth), newLeaf)
+		newNode.addChild(leaf.key.charAt(int(depth)), leaf.key.valid(int(depth)), current)
+		newNode.addChild(leaf2.key.charAt(int(depth)), leaf2.key.valid(int(depth)), newLeaf)
 		replaceRef(curNode, newNode)
 
 		return nil, false
 	}
 
-	node := current.node()
+	node := current
 	if node.prefixLen > 0 {
 		prefixMismatchIdx := current.matchDeep(key, depth)
 		if prefixMismatchIdx >= node.prefixLen {
@@ -135,32 +134,31 @@ func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth in
 		}
 
 		newNode := factory.newNode4()
-		node4 := newNode.node4()
-		node4.prefixLen = prefixMismatchIdx
-		for i := 0; i < min(prefixMismatchIdx, MaxPrefixLen); i++ {
-			node4.prefix[i] = node.prefix[i]
+		newNode.prefixLen = prefixMismatchIdx
+		for i := 0; i < int(min(prefixMismatchIdx, MaxPrefixLen)); i++ {
+			newNode.prefix[i] = node.prefix[i]
 		}
 
 		if node.prefixLen <= MaxPrefixLen {
 			node.prefixLen -= (prefixMismatchIdx + 1)
-			newNode.addChild(newKeyChar(node.prefix[prefixMismatchIdx]), current)
+			newNode.addChild(node.prefix[prefixMismatchIdx], true, current)
 
-			for i, limit := 0, min(node.prefixLen, MaxPrefixLen); i < limit; i++ {
+			for i, limit := uint32(0), min(node.prefixLen, MaxPrefixLen); i < limit; i++ {
 				node.prefix[i] = node.prefix[prefixMismatchIdx+i+1]
 			}
 
 		} else {
 			node.prefixLen -= (prefixMismatchIdx + 1)
 			leaf := current.minimum()
-			newNode.addChild(leaf.key.charAt(depth+prefixMismatchIdx), current)
+			newNode.addChild(leaf.key.charAt(int(depth+prefixMismatchIdx)), leaf.key.valid(int(depth+prefixMismatchIdx)), current)
 
-			for i, limit := 0, min(node.prefixLen, MaxPrefixLen); i < limit; i++ {
-				node.prefix[i] = leaf.key.charAt(depth + prefixMismatchIdx + i + 1).Get()
+			for i, limit := uint32(0), min(node.prefixLen, MaxPrefixLen); i < limit; i++ {
+				node.prefix[i] = leaf.key[depth+prefixMismatchIdx+i+1]
 			}
 		}
 
 		// Insert the new leaf
-		newNode.addChild(key.charAt(depth+prefixMismatchIdx), factory.newLeaf(key, value))
+		newNode.addChild(key.charAt(int(depth+prefixMismatchIdx)), key.valid(int(depth+prefixMismatchIdx)), factory.newLeaf(key, value))
 		replaceRef(curNode, newNode)
 
 		return nil, false
@@ -169,18 +167,18 @@ func (t *tree) recursiveInsert(curNode **artNode, key Key, value Value, depth in
 NEXT_NODE:
 
 	// Find a child to recursive to
-	next := current.findChild(key.charAt(depth))
+	next := current.findChild(key.charAt(int(depth)), key.valid(int(depth)))
 	if *next != nil {
 		return t.recursiveInsert(next, key, value, depth+1)
 	}
 
 	// No Child, artNode goes with us
-	current.addChild(key.charAt(depth), factory.newLeaf(key, value))
+	current.addChild(key.charAt(int(depth)), key.valid(int(depth)), factory.newLeaf(key, value))
 
 	return nil, false
 }
 
-func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bool) {
+func (t *tree) recursiveDelete(curNode **artNode, key Key, depth uint32) (Value, bool) {
 	if t == nil || *curNode == nil || len(key) == 0 {
 		return nil, false
 	}
@@ -196,7 +194,7 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 		return nil, false
 	}
 
-	node := current.node()
+	node := current
 	if node.prefixLen > 0 {
 		prefixLen := node.match(key, depth)
 		if prefixLen != min(node.prefixLen, MaxPrefixLen) {
@@ -206,7 +204,7 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 		depth += node.prefixLen
 	}
 
-	next := current.findChild(key.charAt(depth))
+	next := current.findChild(key.charAt(int(depth)), key.valid(int(depth)))
 	if *next == nil {
 		return nil, false
 	}
@@ -214,7 +212,7 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 	if (*next).isLeaf() {
 		leaf := (*next).leaf()
 		if leaf.match(key) {
-			current.deleteChild(key.charAt(depth))
+			current.deleteChild(key.charAt(int(depth)), key.valid(int(depth)))
 			return leaf.value, true
 		}
 
@@ -224,9 +222,9 @@ func (t *tree) recursiveDelete(curNode **artNode, key Key, depth int) (Value, bo
 	return t.recursiveDelete(next, key, depth+1)
 }
 
-func (t *tree) longestCommonPrefix(l1 *leaf, l2 *leaf, depth int) int {
+func (t *tree) longestCommonPrefix(l1 *leaf, l2 *leaf, depth uint32) uint32 {
 	l1key, l2key := l1.key, l2.key
-	idx, limit := depth, min(len(l1key), len(l2key))
+	idx, limit := depth, min(uint32(len(l1key)), uint32(len(l2key)))
 	for ; idx < limit; idx++ {
 		if l1key[idx] != l2key[idx] {
 			break
