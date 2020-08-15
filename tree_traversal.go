@@ -74,14 +74,14 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAct
 
 	switch current.kind {
 	case Node4:
-		return t.forEachChildren(current.node4().children[:], callback)
+		return t.forEachChildren(current.zeroChild, current.node4().children[:], callback)
 
 	case Node16:
-		return t.forEachChildren(current.node16().children[:], callback)
+		return t.forEachChildren(current.zeroChild, current.node16().children[:], callback)
 
 	case Node48:
 		node := current.node48()
-		child := node.children[current.maxChildren()]
+		child := current.zeroChild
 		if child != nil {
 			if t.recursiveForEach(child, callback) == traverseStop {
 				return traverseStop
@@ -102,14 +102,13 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAct
 		}
 
 	case Node256:
-		return t.forEachChildren(current.node256().children[:], callback)
+		return t.forEachChildren(current.zeroChild, current.node256().children[:], callback)
 	}
 
 	return traverseContinue
 }
 
-func (t *tree) forEachChildren(children []*artNode, callback Callback) traverseAction {
-	nullChild := children[len(children)-1]
+func (t *tree) forEachChildren(nullChild *artNode, children []*artNode, callback Callback) traverseAction {
 	if nullChild != nil {
 		if t.recursiveForEach(nullChild, callback) == traverseStop {
 			return traverseStop
@@ -238,8 +237,7 @@ func (ti *iterator) Next() (Node, error) {
 
 const nullIdx = -1
 
-func nextChild(childIdx int, children []*artNode) ( /*nextChildIdx*/ int /*nextNode*/, *artNode) {
-	nullChild := children[len(children)-1]
+func nextChild(childIdx int, nullChild *artNode, children []*artNode) ( /*nextChildIdx*/ int /*nextNode*/, *artNode) {
 	if childIdx == nullIdx {
 		if nullChild != nil {
 			return 0, nullChild
@@ -268,14 +266,14 @@ func (ti *iterator) next() {
 
 		switch curNode.kind {
 		case Node4:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node4().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.zeroChild, curNode.node4().children[:])
 
 		case Node16:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node16().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.zeroChild, curNode.node16().children[:])
 
 		case Node48:
 			node := curNode.node48()
-			nullChild := node.children[curNode.maxChildren()]
+			nullChild := curNode.zeroChild
 			if curChildIdx == nullIdx {
 				if nullChild == nil {
 					curChildIdx = 0 // try from 0 based child
@@ -300,7 +298,7 @@ func (ti *iterator) next() {
 			}
 
 		case Node256:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node256().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.zeroChild, curNode.node256().children[:])
 		}
 
 		if nextNode == nil {

@@ -47,5 +47,8 @@ func (f *objFactory) newNode256() *artNode {
 func (f *objFactory) newLeaf(key Key, value interface{}) *artNode {
 	clonedKey := make(Key, len(key))
 	copy(clonedKey, key)
-	return &artNode{kind: Leaf, ref: unsafe.Pointer(&leaf{key: clonedKey, value: value})}
+	return &artNode{
+		kind: Leaf,
+		ref:  unsafe.Pointer(&leaf{key: clonedKey, value: value}),
+	}
 }

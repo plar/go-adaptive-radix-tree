@@ -15,26 +15,26 @@ type prefix [MaxPrefixLen]byte
 type node4 struct {
 	keys     [node4Max]byte
 	present  [node4Max]byte
-	children [node4Max + 1]*artNode
+	children [node4Max]*artNode
 }
 
 // Node with 16 children
 type node16 struct {
 	keys     [node16Max]byte
 	present  [node16Max]byte
-	children [node16Max + 1]*artNode
+	children [node16Max]*artNode
 }
 
 // Node with 48 children
 type node48 struct {
 	keys     [node256Max]byte
 	present  [node256Max]byte
-	children [node48Max + 1]*artNode
+	children [node48Max]*artNode
 }
 
 // Node with 256 children
 type node256 struct {
-	children [node256Max + 1]*artNode
+	children [node256Max]*artNode
 }
 
 // Leaf node with variable key length
@@ -50,6 +50,7 @@ type artNode struct {
 	prefixLen   uint32
 	numChildren uint16
 	kind        Kind
+	zeroChild   *artNode
 }
 
 // String returns string representation of the Kind value
@@ -166,38 +167,38 @@ func (an *artNode) minimum() *leaf {
 
 	case Node4:
 		node := an.node4()
-		if node.children[an.maxChildren()] != nil {
-			return node.children[an.maxChildren()].minimum()
+		if an.zeroChild != nil {
+			return an.zeroChild.minimum()
 		} else if node.children[0] != nil {
 			return node.children[0].minimum()
 		}
 
 	case Node16:
 		node := an.node16()
-		if node.children[an.maxChildren()] != nil {
-			return node.children[an.maxChildren()].minimum()
+		if an.zeroChild != nil {
+			return an.zeroChild.minimum()
 		} else if node.children[0] != nil {
 			return node.children[0].minimum()
 		}
 
 	case Node48:
 		node := an.node48()
-		if node.children[an.maxChildren()] != nil {
-			return node.children[an.maxChildren()].minimum()
-		} else {
-			idx := 0
-			for node.present[idx] == 0 {
-				idx++
-			}
-			if node.children[node.keys[idx]] != nil {
-				return node.children[node.keys[idx]].minimum()
-			}
+		if an.zeroChild != nil {
+			return an.zeroChild.minimum()
+		}
+
+		idx := 0
+		for node.present[idx] == 0 {
+			idx++
+		}
+		if node.children[node.keys[idx]] != nil {
+			return node.children[node.keys[idx]].minimum()
 		}
 
 	case Node256:
 		node := an.node256()
-		if node.children[an.maxChildren()] != nil {
-			return node.children[an.maxChildren()].minimum()
+		if an.zeroChild != nil {
+			return an.zeroChild.minimum()
 		} else if len(node.children) > 0 {
 			idx := 0
 			for ; node.children[idx] == nil; idx++ {
@@ -278,32 +279,33 @@ func (an *artNode) index(c byte) int {
 	return -1 // not found
 }
 
+var nodeNotFound *artNode
+
 func (an *artNode) findChild(c byte, valid bool) **artNode {
-	idx := 0
-	if valid {
-		idx = an.index(c)
-	} else {
-		idx = int(an.maxChildren())
+	if !valid {
+		return &an.zeroChild
 	}
 
-	if idx >= 0 {
-		switch an.kind {
-		case Node4:
-			return &an.node4().children[idx]
-
-		case Node16:
-			return &an.node16().children[idx]
-
-		case Node48:
-			return &an.node48().children[idx]
-
-		case Node256:
-			return &an.node256().children[idx]
-		}
+	idx := an.index(c)
+	if idx == -1 {
+		return &nodeNotFound
 	}
 
-	var nullNode *artNode
-	return &nullNode
+	switch an.kind {
+	case Node4:
+		return &an.node4().children[idx]
+
+	case Node16:
+		return &an.node16().children[idx]
+
+	case Node48:
+		return &an.node48().children[idx]
+
+	case Node256:
+		return &an.node256().children[idx]
+	}
+
+	return &nodeNotFound
 }
 
 func (an *artNode) node4() *node4 {
@@ -327,103 +329,105 @@ func (an *artNode) leaf() *leaf {
 }
 
 func (an *artNode) _addChild4(c byte, valid bool, child *artNode) bool {
-	node := an.node4()
-	if an.numChildren < an.maxChildren() {
-		if !valid {
-			node.children[an.maxChildren()] = child
-		} else {
-			i := uint16(0)
-			for ; i < an.numChildren; i++ {
-				if c < node.keys[i] {
-					break
-				}
-			}
-
-			limit := an.numChildren - i
-			for j := limit; limit > 0 && j > 0; j-- {
-				node.keys[i+j] = node.keys[i+j-1]
-				node.present[i+j] = node.present[i+j-1]
-				node.children[i+j] = node.children[i+j-1]
-			}
-			node.keys[i] = c
-			node.present[i] = 1
-			node.children[i] = child
-			an.numChildren++
-		}
-		return false
-	} else {
+	// grow to node16
+	if an.numChildren >= an.maxChildren() {
 		newNode := an.grow()
 		newNode.addChild(c, valid, child)
 		replaceNode(an, newNode)
 		return true
 	}
+
+	// zero byte in the key
+	if !valid {
+		an.zeroChild = child
+		return false
+	}
+
+	// just add a new child
+	node := an.node4()
+	i := uint16(0)
+	for ; i < an.numChildren; i++ {
+		if c < node.keys[i] {
+			break
+		}
+	}
+
+	limit := an.numChildren - i
+	for j := limit; limit > 0 && j > 0; j-- {
+		node.keys[i+j] = node.keys[i+j-1]
+		node.present[i+j] = node.present[i+j-1]
+		node.children[i+j] = node.children[i+j-1]
+	}
+	node.keys[i] = c
+	node.present[i] = 1
+	node.children[i] = child
+	an.numChildren++
+	return false
 }
 
 func (an *artNode) _addChild16(c byte, valid bool, child *artNode) bool {
-	node := an.node16()
-	if an.numChildren < an.maxChildren() {
-		if !valid {
-			node.children[an.maxChildren()] = child
-		} else {
-			index := sort.Search(int(an.numChildren), func(i int) bool {
-				return c <= node.keys[byte(i)]
-			})
-
-			for i := an.numChildren; i > uint16(index); i-- {
-				node.keys[i] = node.keys[i-1]
-				node.present[i] = node.present[i-1]
-				node.children[i] = node.children[i-1]
-			}
-
-			node.keys[index] = c
-			node.present[index] = 1
-			node.children[index] = child
-			an.numChildren++
-		}
-
-		return false
-	} else {
+	if an.numChildren >= an.maxChildren() {
 		newNode := an.grow()
 		newNode.addChild(c, valid, child)
 		replaceNode(an, newNode)
-
 		return true
 	}
+
+	if !valid {
+		an.zeroChild = child
+		return false
+	}
+
+	node := an.node16()
+	index := sort.Search(int(an.numChildren), func(i int) bool {
+		return c <= node.keys[byte(i)]
+	})
+
+	for i := an.numChildren; i > uint16(index); i-- {
+		node.keys[i] = node.keys[i-1]
+		node.present[i] = node.present[i-1]
+		node.children[i] = node.children[i-1]
+	}
+
+	node.keys[index] = c
+	node.present[index] = 1
+	node.children[index] = child
+	an.numChildren++
+	return false
 }
 
 func (an *artNode) _addChild48(c byte, valid bool, child *artNode) bool {
-	node := an.node48()
-	if an.numChildren < an.maxChildren() {
-		if !valid {
-			node.children[an.maxChildren()] = child
-		} else {
-			index := byte(0)
-			for node.children[index] != nil {
-				index++
-			}
-
-			node.keys[c] = index
-			node.present[c] = 1
-			node.children[index] = child
-			an.numChildren++
-		}
-
-		return false
-	} else {
+	if an.numChildren >= an.maxChildren() {
 		newNode := an.grow()
 		newNode.addChild(c, valid, child)
 		replaceNode(an, newNode)
-
 		return true
 	}
+
+	if !valid {
+		an.zeroChild = child
+		return false
+	}
+
+	node := an.node48()
+	index := byte(0)
+	for node.children[index] != nil {
+		index++
+	}
+
+	node.keys[c] = index
+	node.present[c] = 1
+	node.children[index] = child
+	an.numChildren++
+	return false
 }
 
 func (an *artNode) _addChild256(c byte, valid bool, child *artNode) bool {
-	node := an.node256()
 	if !valid {
-		node.children[an.maxChildren()] = child
+		an.zeroChild = child
 	} else {
 		an.numChildren++
+		node := an.node256()
 		node.children[c] = child
 	}
 
@@ -449,11 +453,11 @@ func (an *artNode) addChild(c byte, valid bool, child *artNode) bool {
 }
 
 func (an *artNode) _deleteChild4(c byte, valid bool) uint16 {
-	node := an.node4()
 	if !valid {
-		node.children[an.maxChildren()] = nil
+		an.zeroChild = nil
 	} else if idx := an.index(c); idx >= 0 {
 		an.numChildren--
+		node := an.node4()
 		node.keys[idx] = 0
 		node.present[idx] = 0
 		node.children[idx] = nil
@@ -476,7 +480,7 @@ func (an *artNode) _deleteChild4(c byte, valid bool) uint16 {
 	// For all higher nodes(16/48/256) we simply copy null node to a smaller node
 	// see deleteChild() and shrink() methods for implementation details
 	numChildren := an.numChildren
-	if node.children[an.maxChildren()] != nil {
+	if an.zeroChild != nil {
 		numChildren++
 	}
 
@@ -484,11 +488,11 @@ func (an *artNode) _deleteChild4(c byte, valid bool) uint16 {
 }
 
 func (an *artNode) _deleteChild16(c byte, valid bool) uint16 {
-	node := an.node16()
 	if !valid {
-		node.children[an.maxChildren()] = nil
+		an.zeroChild = nil
 	} else if idx := an.index(c); idx >= 0 {
 		an.numChildren--
+		node := an.node16()
 		node.keys[idx] = 0
 		node.present[idx] = 0
 		node.children[idx] = nil
@@ -510,7 +514,7 @@ func (an *artNode) _deleteChild16(c byte, valid bool) uint16 {
 func (an *artNode) _deleteChild48(c byte, valid bool) uint16 {
 	node := an.node48()
 	if !valid {
-		node.children[an.maxChildren()] = nil
+		an.zeroChild = nil
 	} else if idx := an.index(c); idx >= 0 && node.children[idx] != nil {
 		node.children[idx] = nil
 		node.keys[c] = 0
@@ -524,7 +528,7 @@ func (an *artNode) _deleteChild48(c byte, valid bool) uint16 {
 func (an *artNode) _deleteChild256(c byte, valid bool) uint16 {
 	node := an.node256()
 	if !valid {
-		node.children[an.maxChildren()] = nil
+		an.zeroChild = nil
 		return an.numChildren
 	} else if idx := an.index(c); node.children[idx] != nil {
 		node.children[idx] = nil
@@ -589,7 +593,7 @@ func (an *artNode) grow() *artNode {
 
 		d := node.node16()
 		s := an.node4()
-		d.children[node.maxChildren()] = s.children[an.maxChildren()]
+		node.zeroChild = an.zeroChild
 
 		for i := uint16(0); i < an.numChildren; i++ {
 			if s.present[i] != 0 {
@@ -606,7 +610,7 @@ func (an *artNode) grow() *artNode {
 
 		d := node.node48()
 		s := an.node16()
-		d.children[node.maxChildren()] = s.children[an.maxChildren()]
+		node.zeroChild = an.zeroChild
 
 		var numChildren byte
 		for i := uint16(0); i < an.numChildren; i++ {
@@ -626,7 +630,7 @@ func (an *artNode) grow() *artNode {
 
 		d := node.node256()
 		s := an.node48()
-		d.children[node.maxChildren()] = s.children[an.maxChildren()]
+		node.zeroChild = an.zeroChild
 
 		for i := 0; i < node256Max; i++ {
 			if s.present[i] != 0 {
@@ -646,7 +650,7 @@ func (an *artNode) shrink() *artNode {
 		node4 := an.node4()
 		child := node4.children[0]
 		if child == nil {
-			child = node4.children[an.maxChildren()]
+			child = an.zeroChild
 		}
 
 		if child.isLeaf() {
@@ -688,7 +692,7 @@ func (an *artNode) shrink() *artNode {
 			newNode.numChildren++
 		}
 
-		node4.children[newNode.maxChildren()] = node16.children[an.maxChildren()]
+		newNode.zeroChild = an.zeroChild
 
 		return newNode
 
@@ -711,7 +715,7 @@ func (an *artNode) shrink() *artNode {
 			}
 		}
 
-		node16.children[newNode.maxChildren()] = node48.children[an.maxChildren()]
+		newNode.zeroChild = an.zeroChild
 
 		return newNode
 
@@ -730,7 +734,7 @@ func (an *artNode) shrink() *artNode {
 			}
 		}
 
-		node48.children[newNode.maxChildren()] = node256.children[an.maxChildren()]
+		newNode.zeroChild = an.zeroChild
 
 		return newNode
 	}
@@ -774,9 +778,11 @@ func (n *artNode) match(key Key, depth uint32) uint32 /* 1st mismatch index*/ {
 
 // Node helpers
 func replaceRef(oldNode **artNode, newNode *artNode) {
+	// newNode.zeroChild = (*oldNode).zeroChild
 	*oldNode = newNode
 }
 
 func replaceNode(oldNode *artNode, newNode *artNode) {
+	// newNode.zeroChild = (*oldNode).zeroChild
 	*oldNode = *newNode
 }

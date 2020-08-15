@@ -613,7 +613,8 @@ func TestTreeTraversalPrefix(t *testing.T) {
 			"api",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "api.foo", "api"},
-		}, {
+		},
+		{
 			"a",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
