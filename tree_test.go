@@ -1379,9 +1379,7 @@ func TestNodesWithNullKeys48(t *testing.T) {
 	}
 
 	for _, term := range terms {
-		// fmt.Println("==================================Finma treee=============", string(term))
 		tree.Insert(Key(term), term)
-		// fmt.Println(tree)
 	}
 
 	for _, term := range terms {
@@ -1409,8 +1407,6 @@ func TestNodesWithNullKeys48(t *testing.T) {
 
 	// delete all terms
 	for _, term := range terms {
-		// fmt.Println(tree)
-		// fmt.Printf("del key=%v\n", string(term))
 		v, deleted := tree.Delete(Key(term))
 		assert.True(t, deleted)
 		assert.Equal(t, term, v)
