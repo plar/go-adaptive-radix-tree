@@ -71,10 +71,10 @@ Benchmarks were performed on datasets extracted from different projects:
 
 |**go-adaptive-radix-tree**| #  | Average time      |Bytes per operation|Allocs per operation |
 |:-------------------------|---:|------------------:|------------------:|--------------------:|
-|       Tree Insert Words  | 10 | 146,326,506 ns/op |   41,299,883 B/op | 1,326,167 allocs/op |
-|       Tree Search Words  | 30 |  44,075,933 ns/op |            0 B/op |         0 allocs/op |
-|       Tree Insert UUIDs  | 20 |  86,062,471 ns/op |   19,638,904 B/op |   547,648 allocs/op |
-|       Tree Search UUIDs  | 50 |  35,808,749 ns/op |            0 B/op |         0 allocs/op |
+|       Tree Insert Words  |  9 | 117,888,698 ns/op |  37,942,744  B/op | 1,214,541 allocs/op |
+|       Tree Search Words  | 26 |  44,555,608 ns/op |            0 B/op |         0 allocs/op |
+|       Tree Insert UUIDs  | 18 |  59,360,135 ns/op |   18,375,723 B/op |   485,057 allocs/op |
+|       Tree Search UUIDs  | 54 |  21,265,931 ns/op |            0 B/op |         0 allocs/op |
 |**go-art**                |    |                   |                   |                     |
 |       Tree Insert Words  |  5 | 272,047,975 ns/op |   81,628,987 B/op | 2,547,316 allocs/op |
 |       Tree Search Words  | 10 | 129,011,177 ns/op |   13,272,278 B/op | 1,659,033 allocs/op |

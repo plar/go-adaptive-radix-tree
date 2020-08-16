@@ -30,7 +30,7 @@ var (
 )
 
 // Kind is a node type.
-type Kind uint8
+type Kind int
 
 // Key Type.
 // Key can be a set of any characters include unicode chars with null bytes.
