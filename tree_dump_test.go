@@ -157,4 +157,22 @@ func TestAppendForExtralOptions(t *testing.T) {
 			1,
 		}, printValuesAsHex)
 	assert.Equal(t, "[·  1  2 10 11]", tsHex.buf.String())
+
+	tsDef := &treeStringer{make([]depthStorage, 1024), bytes.NewBufferString("")}
+	tsDef.appendKey(
+		[]byte{
+			0, // not present
+			1,
+			2,
+			16,
+			17,
+		},
+		[]byte{
+			0,
+			1,
+			1,
+			1,
+			1,
+		}, 0)
+	assert.Equal(t, "[·\x01\x02\x10\x11]", tsDef.buf.String())
 }

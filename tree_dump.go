@@ -195,19 +195,40 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	switch an.kind {
 	case Node4:
 		nn := an.node4()
-		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth, an.zeroChild)
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], nn.present[:], nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node16:
 		nn := an.node16()
-		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth, an.zeroChild)
+
+		var present []byte
+		for i := 0; i < len(nn.keys); i++ {
+			if (nn.present & (1 << uint16(i))) != 0 {
+				present = append(present, 1)
+			} else {
+				present = append(present, 0)
+			}
+		}
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], present, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node48:
 		nn := an.node48()
-		ts.node(pad, an.prefixLen, an.prefix[:], nn.keys[:], nn.present[:], nn.children[:], an.numChildren, depth, an.zeroChild)
+
+		var present []byte
+		for i := 0; i < len(nn.keys); i++ {
+			if (nn.present[uint16(i)>>n48s] & (1 << (uint16(i) % n48m))) != 0 {
+				present = append(present, 1)
+			} else {
+				present = append(present, 0)
+			}
+		}
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], present, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node256:
 		nn := an.node256()
-		ts.node(pad, an.prefixLen, an.prefix[:], nil, nil, nn.children[:], an.numChildren, depth, an.zeroChild)
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nil, nil, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Leaf:
 		n := an.leaf()
