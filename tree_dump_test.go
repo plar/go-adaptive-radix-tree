@@ -2,22 +2,23 @@ package art
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTreeDump4(t *testing.T) {
 	n4 := factory.newNode4()
 	n4leaf := factory.newLeaf([]byte("key4"), "value4")
-	n4._addChild4('k', n4leaf)
+	n4._addChild4('k', true, n4leaf)
 
 	tree := &tree{root: n4}
 	o := tree.String()
 
 	assert.Contains(t, o, "Node4")
 	assert.Contains(t, o, "prefix(0): [0 0 0 0 0 0 0 0 0 0]")
-	assert.Contains(t, o, "keys: [· · · ·] [····]")
-	assert.Contains(t, o, "children(0): [<nil> <nil> <nil> <nil> 0x")
+	assert.Contains(t, o, "keys: [107 · · ·] [k···]")
+	assert.Contains(t, o, "children(1): [0x")
 	assert.Contains(t, o, "Leaf")
 	assert.Contains(t, o, "key(4): [107 101 121 52] [key4]")
 	assert.Contains(t, o, "val: value4")
@@ -26,15 +27,15 @@ func TestTreeDump4(t *testing.T) {
 func TestTreeDump4BinaryValue(t *testing.T) {
 	n4 := factory.newNode4()
 	n4leaf := factory.newLeaf([]byte("key4"), []byte("value4"))
-	n4._addChild4('k', n4leaf)
+	n4._addChild4('k', true, n4leaf)
 
 	tree := &tree{root: n4}
 	o := tree.String()
 
 	assert.Contains(t, o, "Node4")
 	assert.Contains(t, o, "prefix(0): [0 0 0 0 0 0 0 0 0 0]")
-	assert.Contains(t, o, "keys: [· · · ·] [····]")
-	assert.Contains(t, o, "children(0): [<nil> <nil> <nil> <nil> 0x")
+	assert.Contains(t, o, "keys: [107 · · ·] [k···]")
+	assert.Contains(t, o, "children(1): [0x")
 	assert.Contains(t, o, "Leaf")
 	assert.Contains(t, o, "key(4): [107 101 121 52] [key4]")
 	assert.Contains(t, o, "val: value4", "Binary value should be print as a string")
@@ -43,15 +44,15 @@ func TestTreeDump4BinaryValue(t *testing.T) {
 func TestTreeDump4Int(t *testing.T) {
 	n4 := factory.newNode4()
 	n4leaf := factory.newLeaf([]byte("key4"), 4)
-	n4._addChild4('k', n4leaf)
+	n4._addChild4('k', true, n4leaf)
 
 	tree := &tree{root: n4}
 	o := tree.String()
 
 	assert.Contains(t, o, "Node4")
 	assert.Contains(t, o, "prefix(0): [0 0 0 0 0 0 0 0 0 0]")
-	assert.Contains(t, o, "keys: [· · · ·] [····]")
-	assert.Contains(t, o, "children(0): [<nil> <nil> <nil> <nil> 0x")
+	assert.Contains(t, o, "keys: [107 · · ·] [k···]")
+	assert.Contains(t, o, "children(1): [0x")
 	assert.Contains(t, o, "Leaf")
 	assert.Contains(t, o, "key(4): [107 101 121 52] [key4]")
 	assert.Contains(t, o, "val: 4", "Int value should be print as a number")
@@ -61,13 +62,13 @@ func TestTreeDump2NodeWithIntValue(t *testing.T) {
 	n16 := factory.newNode16()
 	n16_2 := factory.newNode16()
 	n16_2leaf := factory.newLeaf([]byte("zima"), 4)
-	n16_2.addChild(newKeyChar('z'), n16_2leaf)
+	n16_2.addChild('z', true, n16_2leaf)
 
 	n16leaf := factory.newLeaf([]byte("key4"), 4)
 	c4leaf := factory.newLeaf([]byte("cey4"), 44)
-	n16.addChild(newKeyChar('k'), n16leaf)
-	n16.addChild(newKeyChar('c'), c4leaf)
-	n16.addChild(newKeyChar('z'), n16_2)
+	n16.addChild('k', true, n16leaf)
+	n16.addChild('c', true, c4leaf)
+	n16.addChild('z', true, n16_2)
 
 	tree := &tree{root: n16}
 	o := tree.String()
@@ -87,7 +88,7 @@ func TestTreeDump2NodeWithIntValue(t *testing.T) {
 func TestTreeDump16(t *testing.T) {
 	n16 := factory.newNode16()
 	n16leaf := factory.newLeaf([]byte("key16"), "value16")
-	n16.addChild(newKeyChar('k'), n16leaf)
+	n16.addChild('k', true, n16leaf)
 
 	tree := &tree{root: n16}
 	o := tree.String()
@@ -104,7 +105,7 @@ func TestTreeDump16(t *testing.T) {
 func TestTreeDump48(t *testing.T) {
 	n48 := factory.newNode48()
 	n48leaf := factory.newLeaf([]byte("key48"), "value48")
-	n48.addChild(newKeyChar('k'), n48leaf)
+	n48.addChild('k', true, n48leaf)
 
 	tree := &tree{root: n48}
 	o := tree.String()
@@ -121,7 +122,7 @@ func TestTreeDump48(t *testing.T) {
 func TestTreeDump256(t *testing.T) {
 	n256 := factory.newNode256()
 	n256leaf := factory.newLeaf([]byte("key256"), "value256")
-	n256.addChild(newKeyChar('k'), n256leaf)
+	n256.addChild('k', true, n256leaf)
 
 	tree := &tree{root: n256}
 	o := tree.String()
@@ -135,16 +136,43 @@ func TestTreeDump256(t *testing.T) {
 }
 
 func TestAppendForExtralOptions(t *testing.T) {
-	tsDec := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
+	tsDec := &treeStringer{make([]depthStorage, 1024), bytes.NewBufferString("")}
 	tsDec.append([]byte{1, 2, 3, 4}, printValuesAsDecimal)
 	assert.Equal(t, "[1 2 3 4]", tsDec.buf.String())
 
-	tsHex := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
-	tsHex.append([]keyChar{
-		0, // not present
-		newKeyChar(1),
-		newKeyChar(2),
-		newKeyChar(16),
-		newKeyChar(17)}, printValuesAsHex)
+	tsHex := &treeStringer{make([]depthStorage, 1024), bytes.NewBufferString("")}
+	tsHex.appendKey(
+		[]byte{
+			0, // not present
+			1,
+			2,
+			16,
+			17,
+		},
+		[]byte{
+			0,
+			1,
+			1,
+			1,
+			1,
+		}, printValuesAsHex)
 	assert.Equal(t, "[·  1  2 10 11]", tsHex.buf.String())
+
+	tsDef := &treeStringer{make([]depthStorage, 1024), bytes.NewBufferString("")}
+	tsDef.appendKey(
+		[]byte{
+			0, // not present
+			1,
+			2,
+			16,
+			17,
+		},
+		[]byte{
+			0,
+			1,
+			1,
+			1,
+			1,
+		}, 0)
+	assert.Equal(t, "[·\x01\x02\x10\x11]", tsDef.buf.String())
 }

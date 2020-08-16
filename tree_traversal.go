@@ -74,26 +74,26 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAct
 
 	switch current.kind {
 	case Node4:
-		return t.forEachChildren(current.node4().children[:], callback)
+		return t.forEachChildren(current.node().zeroChild, current.node4().children[:], callback)
 
 	case Node16:
-		return t.forEachChildren(current.node16().children[:], callback)
+		return t.forEachChildren(current.node().zeroChild, current.node16().children[:], callback)
 
 	case Node48:
 		node := current.node48()
-		child := node.children[current.maxChildren()]
+		child := node.zeroChild
 		if child != nil {
 			if t.recursiveForEach(child, callback) == traverseStop {
 				return traverseStop
 			}
 		}
 
-		for _, idx := range node.keys {
-			if idx.Absent() {
+		for i, c := range node.keys {
+			if node.present[uint16(i)>>n48s]&(1<<(uint16(i)%n48m)) == 0 {
 				continue
 			}
 
-			child := node.children[idx.Get()]
+			child := node.children[c]
 			if child != nil {
 				if t.recursiveForEach(child, callback) == traverseStop {
 					return traverseStop
@@ -102,14 +102,13 @@ func (t *tree) recursiveForEach(current *artNode, callback Callback) traverseAct
 		}
 
 	case Node256:
-		return t.forEachChildren(current.node256().children[:], callback)
+		return t.forEachChildren(current.node().zeroChild, current.node256().children[:], callback)
 	}
 
 	return traverseContinue
 }
 
-func (t *tree) forEachChildren(children []*artNode, callback Callback) traverseAction {
-	nullChild := children[len(children)-1]
+func (t *tree) forEachChildren(nullChild *artNode, children []*artNode, callback Callback) traverseAction {
 	if nullChild != nil {
 		if t.recursiveForEach(nullChild, callback) == traverseStop {
 			return traverseStop
@@ -136,7 +135,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 		return traverseContinue
 	}
 
-	depth := 0
+	depth := uint32(0)
 	for current != nil {
 		if current.isLeaf() {
 			leaf := current.leaf()
@@ -148,7 +147,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 			break
 		}
 
-		if depth == len(key) {
+		if depth == uint32(len(key)) {
 			leaf := current.minimum()
 			if leaf.prefixMatch(key) {
 				if t.recursiveForEach(current, callback) == traverseStop {
@@ -167,7 +166,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 
 			if prefixLen == 0 {
 				break
-			} else if depth+prefixLen == len(key) {
+			} else if depth+prefixLen == uint32(len(key)) {
 				return t.recursiveForEach(current, callback)
 
 			}
@@ -175,7 +174,7 @@ func (t *tree) forEachPrefix(current *artNode, key Key, callback Callback) trave
 		}
 
 		// Find a child to recursive to
-		next := current.findChild(key.charAt(depth))
+		next := current.findChild(key.charAt(int(depth)), key.valid(int(depth)))
 		if *next == nil {
 			break
 		}
@@ -238,8 +237,7 @@ func (ti *iterator) Next() (Node, error) {
 
 const nullIdx = -1
 
-func nextChild(childIdx int, children []*artNode) ( /*nextChildIdx*/ int /*nextNode*/, *artNode) {
-	nullChild := children[len(children)-1]
+func nextChild(childIdx int, nullChild *artNode, children []*artNode) ( /*nextChildIdx*/ int /*nextNode*/, *artNode) {
 	if childIdx == nullIdx {
 		if nullChild != nil {
 			return 0, nullChild
@@ -268,14 +266,14 @@ func (ti *iterator) next() {
 
 		switch curNode.kind {
 		case Node4:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node4().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node4().children[:])
 
 		case Node16:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node16().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node16().children[:])
 
 		case Node48:
 			node := curNode.node48()
-			nullChild := node.children[curNode.maxChildren()]
+			nullChild := node.zeroChild
 			if curChildIdx == nullIdx {
 				if nullChild == nil {
 					curChildIdx = 0 // try from 0 based child
@@ -287,11 +285,12 @@ func (ti *iterator) next() {
 			}
 
 			for i := curChildIdx; i < len(node.keys); i++ {
-				idx := node.keys[byte(i)]
-				if idx.Absent() {
+				// if node.present[i] == 0 {
+				if node.present[uint16(i)>>n48s]&(1<<(uint16(i)%n48m)) == 0 {
 					continue
 				}
-				child := node.children[idx.Get()]
+
+				child := node.children[node.keys[i]]
 				if child != nil && child != nullChild {
 					nextChildIdx = i + 1
 					nextNode = child
@@ -300,7 +299,7 @@ func (ti *iterator) next() {
 			}
 
 		case Node256:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node256().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node256().children[:])
 		}
 
 		if nextNode == nil {

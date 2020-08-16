@@ -84,12 +84,12 @@ func TestTreeLongestCommonPrefix(t *testing.T) {
 
 	l1 := factory.newLeaf(Key("abcdefg12345678"), "abcdefg12345678").leaf()
 	l2 := factory.newLeaf(Key("abcdefg!@#$%^&*"), "abcdefg!@#$%^&*").leaf()
-	assert.Equal(t, 7, tree.longestCommonPrefix(l1, l2, 0))
-	assert.Equal(t, 3, tree.longestCommonPrefix(l1, l2, 4))
+	assert.Equal(t, uint32(7), tree.longestCommonPrefix(l1, l2, 0))
+	assert.Equal(t, uint32(3), tree.longestCommonPrefix(l1, l2, 4))
 
 	l1 = factory.newLeaf(Key("abcdefg12345678"), "abcdefg12345678").leaf()
 	l2 = factory.newLeaf(Key("defg!@#$%^&*"), "defg!@#$%^&*").leaf()
-	assert.Equal(t, 0, tree.longestCommonPrefix(l1, l2, 0))
+	assert.Equal(t, uint32(0), tree.longestCommonPrefix(l1, l2, 0))
 }
 
 func TestTreeInit(t *testing.T) {
@@ -613,7 +613,8 @@ func TestTreeTraversalPrefix(t *testing.T) {
 			"api",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "api.foo", "api"},
-		}, {
+		},
+		{
 			"a",
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
 			[]string{"api.foo.bar", "api.foo.baz", "api.foe.fum", "abc.123.456", "api.foo", "api"},
@@ -923,9 +924,16 @@ func TestTreeIterateWordsStats(t *testing.T) {
 
 func TestTreeInsertAndDeleteAllWords(t *testing.T) {
 	words := loadTestFile("test/assets/words.txt")
+
 	tree := newTree()
 	for _, w := range words {
 		tree.Insert(w, w)
+	}
+
+	for _, w := range words {
+		v, found := tree.Search(w)
+		assert.Equal(t, w, v, string(w))
+		assert.True(t, found)
 	}
 
 	for _, w := range words {
@@ -950,6 +958,7 @@ func TestTreeInsertAndDeleteAllHSKWords(t *testing.T) {
 		assert.Equal(t, w, v, string(w))
 		assert.True(t, found)
 	}
+
 	for _, w := range words {
 		v, deleted := tree.Delete(w)
 		assert.True(t, deleted)
@@ -1101,6 +1110,7 @@ func BenchmarkWordsTreeIterator(b *testing.B) {
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))

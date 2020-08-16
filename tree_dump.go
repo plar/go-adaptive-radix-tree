@@ -106,36 +106,6 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 		}
 		ts.append("]")
 
-	case []keyChar:
-		arr, _ := v.([]keyChar)
-		ts.append("[")
-		for i, b := range arr {
-			if (options & printValuesAsChar) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%c", b.Get()))
-				} else {
-					ts.append("·")
-				}
-
-			} else if (options & printValuesAsDecimal) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%2d", b.Get()))
-				} else {
-					ts.append("·")
-				}
-			} else if (options & printValuesAsHex) != 0 {
-				if b.Present() {
-					ts.append(fmt.Sprintf("%2x", b.Get()))
-				} else {
-					ts.append("·")
-				}
-			}
-			if (options&(printValuesAsDecimal|printValuesAsHex)) != 0 && i+1 < len(arr) {
-				ts.append(" ")
-			}
-		}
-		ts.append("]")
-
 	case Key:
 		k, _ := v.(Key)
 		ts.append([]byte(k))
@@ -149,25 +119,68 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 	return ts
 }
 
-func (ts *treeStringer) children(children []*artNode, numChildred int, depth int) {
-	for i, child := range children {
-		ts.baseNode(child, depth, i, len(children))
+func (ts *treeStringer) appendKey(keys []byte, present []byte, opts ...int) *treeStringer {
+	options := 0
+	for _, opt := range opts {
+		options |= opt
 	}
+
+	if options == 0 {
+		options = printValueDefault
+	}
+
+	ts.append("[")
+	for i, b := range keys {
+		if (options & printValuesAsChar) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%c", b))
+			} else {
+				ts.append("·")
+			}
+
+		} else if (options & printValuesAsDecimal) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%2d", b))
+			} else {
+				ts.append("·")
+			}
+		} else if (options & printValuesAsHex) != 0 {
+			if present[i] != 0 {
+				ts.append(fmt.Sprintf("%2x", b))
+			} else {
+				ts.append("·")
+			}
+		}
+		if (options&(printValuesAsDecimal|printValuesAsHex)) != 0 && i+1 < len(keys) {
+			ts.append(" ")
+		}
+	}
+	ts.append("]")
+
+	return ts
 }
 
-func (ts *treeStringer) node(pad string, prefixLen int, prefix []byte, keys []keyChar, children []*artNode, numChildren int, depth int) {
+func (ts *treeStringer) children(children []*artNode, numChildred uint16, depth int, zeroChild *artNode) {
+	for i, child := range children {
+		ts.baseNode(child, depth, i, len(children)+1)
+	}
+
+	ts.baseNode(zeroChild, depth, len(children)+1, len(children)+1)
+}
+
+func (ts *treeStringer) node(pad string, prefixLen uint32, prefix []byte, keys []byte, present []byte, children []*artNode, numChildren uint16, depth int, zeroChild *artNode) {
 	if prefix != nil {
 		ts.append(pad).append(fmt.Sprintf("prefix(%x): %v", prefixLen, prefix))
 		ts.append(prefix).append("\n")
 	}
 
 	if keys != nil {
-		ts.append(pad).append("keys: ").append(keys, printValuesAsDecimal).append(" ")
-		ts.append(keys, printValuesAsChar).append("\n")
+		ts.append(pad).append("keys: ").appendKey(keys, present, printValuesAsDecimal).append(" ")
+		ts.appendKey(keys, present, printValuesAsChar).append("\n")
 	}
 
-	ts.append(pad).append(fmt.Sprintf("children(%v): %+v\n", numChildren, children))
-	ts.children(children, numChildren, depth+1)
+	ts.append(pad).append(fmt.Sprintf("children(%v): %+v <%v>\n", numChildren, children, zeroChild))
+	ts.children(children, numChildren, depth+1, zeroChild)
 }
 
 func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenTotal int) {
@@ -181,24 +194,41 @@ func (ts *treeStringer) baseNode(an *artNode, depth int, childNum int, childrenT
 	ts.append(fmt.Sprintf("%v (%p)\n", an.kind, an))
 	switch an.kind {
 	case Node4:
-		n := an.node()
 		nn := an.node4()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], nn.present[:], nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node16:
-		n := an.node()
 		nn := an.node16()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+
+		var present []byte
+		for i := 0; i < len(nn.keys); i++ {
+			if (nn.present & (1 << uint16(i))) != 0 {
+				present = append(present, 1)
+			} else {
+				present = append(present, 0)
+			}
+		}
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], present, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node48:
-		n := an.node()
 		nn := an.node48()
-		ts.node(pad, n.prefixLen, n.prefix[:], nn.keys[:], nn.children[:], n.numChildren, depth)
+
+		var present []byte
+		for i := 0; i < len(nn.keys); i++ {
+			if (nn.present[uint16(i)>>n48s] & (1 << (uint16(i) % n48m))) != 0 {
+				present = append(present, 1)
+			} else {
+				present = append(present, 0)
+			}
+		}
+
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nn.keys[:], present, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Node256:
-		n := an.node()
 		nn := an.node256()
-		ts.node(pad, n.prefixLen, n.prefix[:], nil, nn.children[:], n.numChildren, depth)
+		ts.node(pad, nn.prefixLen, nn.prefix[:], nil, nil, nn.children[:], nn.numChildren, depth, nn.zeroChild)
 
 	case Leaf:
 		n := an.leaf()
