@@ -1076,9 +1076,7 @@ func TestTreeAPI(t *testing.T) {
 	assert.True(t, found)
 }
 
-//
 // Benchmarks
-//
 func BenchmarkWordsTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
 	b.ResetTimer()
@@ -1494,4 +1492,36 @@ func TestTreeInsertAndSearchKeyWithUnicodeAccentChar(t *testing.T) {
 	v, found = tree.Search(accent)
 	assert.True(t, found)
 	assert.Equal(t, string(accent), v)
+}
+
+func TestTreeInsertNilKeyTwice(t *testing.T) {
+	tree := newTree()
+
+	kk := Key("key")
+	kv := "kk-value"
+	old, updated := tree.Insert(kk, kv)
+	assert.Nil(t, old)
+	assert.False(t, updated)
+	v, found := tree.Search(kk)
+	assert.Equal(t, kv, v)
+	assert.True(t, found)
+
+	knil := Key(nil)
+	knilv0 := "knil-value-0"
+	old, updated = tree.Insert(knil, knilv0)
+	assert.Nil(t, old)
+	assert.False(t, updated)
+
+	v, found = tree.Search(knil)
+	assert.Equal(t, knilv0, v)
+	assert.True(t, found)
+
+	knilv1 := "knil-value-1"
+	old, updated = tree.Insert(knil, knilv1)
+	assert.Equal(t, knilv0, old)
+	assert.True(t, updated)
+
+	v, found = tree.Search(knil)
+	assert.Equal(t, knilv1, v)
+	assert.True(t, found)
 }
