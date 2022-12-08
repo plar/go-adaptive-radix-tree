@@ -746,6 +746,10 @@ func (an *artNode) shrink() *artNode {
 
 // Leaf methods
 func (l *leaf) match(key Key) bool {
+	if len(key) == 0 && len(l.key) == 0 {
+		return true
+	}
+
 	if key == nil || len(l.key) != len(key) {
 		return false
 	}
