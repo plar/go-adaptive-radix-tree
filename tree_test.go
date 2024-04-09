@@ -986,6 +986,31 @@ func TestTreeInsertAndDeleteAllUUIDs(t *testing.T) {
 	assert.Nil(t, tree.root)
 }
 
+func TestTreeInsertAndDeleteConcerningZeroChild(t *testing.T) {
+	keys := []Key{
+		Key("test/a1"),
+		Key("test/a2"),
+		Key("test/a3"),
+		Key("test/a4"),
+		// This should become zeroChild
+		Key("test/a"),
+	}
+
+	tree := newTree()
+	for _, w := range keys {
+		tree.Insert(w, w)
+	}
+
+	for _, w := range keys {
+		v, deleted := tree.Delete(w)
+		assert.True(t, deleted)
+		assert.Equal(t, w, v)
+	}
+
+	assert.Equal(t, 0, tree.size)
+	assert.Nil(t, tree.root)
+}
+
 func TestTreeAPI(t *testing.T) {
 	// test empty tree
 	tree := New()

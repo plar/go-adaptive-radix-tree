@@ -691,7 +691,9 @@ func (an *artNode) shrink() *artNode {
 				node4.present[i] = 1
 			}
 			node4.children[i] = node16.children[i]
-			node4.numChildren++
+			if node16.children[i] != nil {
+				node4.numChildren++
+			}
 		}
 
 		node4.zeroChild = node16.zeroChild
