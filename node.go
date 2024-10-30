@@ -756,7 +756,7 @@ func (l *leaf) match(key Key) bool {
 		return false
 	}
 
-	return bytes.Compare(l.key[:len(key)], key) == 0
+	return bytes.Equal(l.key[:len(key)], key)
 }
 
 func (l *leaf) prefixMatch(key Key) bool {
@@ -764,7 +764,7 @@ func (l *leaf) prefixMatch(key Key) bool {
 		return false
 	}
 
-	return bytes.Compare(l.key[:len(key)], key) == 0
+	return bytes.Equal(l.key[:len(key)], key)
 }
 
 // Base node methods

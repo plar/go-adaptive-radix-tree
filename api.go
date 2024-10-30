@@ -25,8 +25,8 @@ const (
 
 // These errors can be returned when iteration over the tree.
 var (
-	ErrConcurrentModification = errors.New("Concurrent modification has been detected")
-	ErrNoMoreNodes            = errors.New("There are no more nodes in the tree")
+	ErrConcurrentModification = errors.New("concurrent modification has been detected")
+	ErrNoMoreNodes            = errors.New("there are no more nodes in the tree")
 )
 
 // Kind is a node type.

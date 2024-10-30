@@ -217,7 +217,7 @@ func TestTreeInsertUUIDsAndMinMax(t *testing.T) {
 	assert.Equal(t, []byte("ffffcb46-a92e-4822-82af-a7190f9c1ec5"), maximum.value)
 }
 
-func (ds *testDataset) build(t *testing.T, tree *tree) {
+func (ds *testDataset) build(_ *testing.T, tree *tree) {
 	if strs, ok := ds.insert.([]string); ok {
 		for _, term := range strs {
 			tree.Insert(Key(term), term)
@@ -745,10 +745,7 @@ func TestTreeTraversalForEachCallbackStop(t *testing.T) {
 	totalCalls := 0
 	tree.ForEach(func(node Node) (cont bool) {
 		totalCalls++
-		if string(node.Key()) == "1111" {
-			return false
-		}
-		return true
+		return string(node.Key()) != "1111"
 	})
 	assert.Equal(t, 5, totalCalls)
 
@@ -761,20 +758,16 @@ func TestTreeTraversalForEachCallbackStop(t *testing.T) {
 	totalCalls = 0
 	tree.ForEach(func(node Node) (cont bool) {
 		totalCalls++
-		if string(node.Key()) == "A" { // node48 with maxChildren?
-			return false
-		}
-		return true
+		// node48 with maxChildren?
+		return string(node.Key()) != "A"
 	})
 	assert.Equal(t, 1, totalCalls)
 
 	totalCalls = 0
 	tree.ForEach(func(node Node) (cont bool) {
 		totalCalls++
-		if string(node.Key()) == "Aani" { // node48 'a' children?
-			return false
-		}
-		return true
+		// node48 'a' children?
+		return string(node.Key()) != "Aani"
 	})
 
 	assert.Equal(t, 2, totalCalls)

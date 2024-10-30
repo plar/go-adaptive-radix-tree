@@ -80,16 +80,14 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 		options = printValueDefault
 	}
 
-	switch v.(type) {
+	switch v := v.(type) {
 
 	case string:
-		str, _ := v.(string)
-		ts.buf.WriteString(str)
+		ts.buf.WriteString(v)
 
 	case []byte:
-		arr, _ := v.([]byte)
 		ts.append("[")
-		for i, b := range arr {
+		for i, b := range v {
 			if (options & printValuesAsChar) != 0 {
 				if b > 0 {
 					ts.append(fmt.Sprintf("%c", b))
@@ -100,15 +98,14 @@ func (ts *treeStringer) append(v interface{}, opts ...int) *treeStringer {
 			} else if (options & printValuesAsDecimal) != 0 {
 				ts.append(fmt.Sprintf("%d", b))
 			}
-			if (options&printValuesAsDecimal) != 0 && i+1 < len(arr) {
+			if (options&printValuesAsDecimal) != 0 && i+1 < len(v) {
 				ts.append(" ")
 			}
 		}
 		ts.append("]")
 
 	case Key:
-		k, _ := v.(Key)
-		ts.append([]byte(k))
+		ts.append([]byte(v))
 
 	default:
 		ts.append("[")
@@ -160,7 +157,7 @@ func (ts *treeStringer) appendKey(keys []byte, present []byte, opts ...int) *tre
 	return ts
 }
 
-func (ts *treeStringer) children(children []*artNode, numChildred uint16, depth int, zeroChild *artNode) {
+func (ts *treeStringer) children(children []*artNode, _ /*numChildred*/ uint16, depth int, zeroChild *artNode) {
 	for i, child := range children {
 		ts.baseNode(child, depth, i, len(children)+1)
 	}
@@ -253,50 +250,51 @@ func (ts *treeStringer) rootNode(an *artNode) {
 
 /*
 DumpNode returns Tree in the human readable format:
- package main
 
- import (
-	"fmt"
-	"github.com/plar/go-adaptive-radix-tree"
- )
+	 package main
 
- func main() {
- 	tree := art.New()
-	terms := []string{"A", "a", "aa"}
-	for _, term := range terms {
-		tree.Insert(art.Key(term), term)
-	}
-	fmt.Println(tree)
- }
+	 import (
+		"fmt"
+		"github.com/plar/go-adaptive-radix-tree"
+	 )
 
- Output:
- ─── Node4 (0xc00008a240)
-     prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
-     keys: [65 97 · ·] [Aa··]
-     children(2): [0xc00008a210 0xc00008a270 <nil> <nil> <nil>]
-     ├── Leaf (0xc00008a210)
-     │   key(1): [65] [A]
-     │   val: A
-     │
-     ├── Node4 (0xc00008a270)
-     │   prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
-     │   keys: [97 · · ·] [a···]
-     │   children(1): [0xc00008a260 <nil> <nil> <nil> 0xc00008a230]
-     │   ├── Leaf (0xc00008a260)
-     │   │   key(2): [97 97] [aa]
-     │   │   val: aa
-     │   │
-     │   ├── nil
-     │   ├── nil
-     │   ├── nil
-     │   └── Leaf (0xc00008a230)
-     │       key(1): [97] [a]
-     │       val: a
-     │
-     │
-     ├── nil
-     ├── nil
-     └── nil
+	 func main() {
+	 	tree := art.New()
+		terms := []string{"A", "a", "aa"}
+		for _, term := range terms {
+			tree.Insert(art.Key(term), term)
+		}
+		fmt.Println(tree)
+	 }
+
+	 Output:
+	 ─── Node4 (0xc00008a240)
+	     prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
+	     keys: [65 97 · ·] [Aa··]
+	     children(2): [0xc00008a210 0xc00008a270 <nil> <nil> <nil>]
+	     ├── Leaf (0xc00008a210)
+	     │   key(1): [65] [A]
+	     │   val: A
+	     │
+	     ├── Node4 (0xc00008a270)
+	     │   prefix(0): [0 0 0 0 0 0 0 0 0 0][··········]
+	     │   keys: [97 · · ·] [a···]
+	     │   children(1): [0xc00008a260 <nil> <nil> <nil> 0xc00008a230]
+	     │   ├── Leaf (0xc00008a260)
+	     │   │   key(2): [97 97] [aa]
+	     │   │   val: aa
+	     │   │
+	     │   ├── nil
+	     │   ├── nil
+	     │   ├── nil
+	     │   └── Leaf (0xc00008a230)
+	     │       key(1): [97] [a]
+	     │       val: a
+	     │
+	     │
+	     ├── nil
+	     ├── nil
+	     └── nil
 */
 func DumpNode(root *artNode) string {
 	ts := &treeStringer{make([]depthStorage, 4096), bytes.NewBufferString("")}
