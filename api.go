@@ -2,7 +2,7 @@ package art
 
 import "errors"
 
-// A constant exposing all node types.
+// Node types.
 const (
 	Leaf    Kind = 0
 	Node4   Kind = 1
@@ -100,19 +100,18 @@ type Tree interface {
 	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
 	// Pass TraverseXXX as an options to return an iterator for preorder traversal over all NodeXXX types.
 	Iterator(options ...int) Iterator
-	//IteratorPrefix(key Key) Iterator
 
 	// Minimum returns the minimum valued leaf, true if leaf is found and nil, false otherwise.
-	Minimum() (min Value, found bool)
+	Minimum() (Value, bool)
 
 	// Maximum returns the maximum valued leaf, true if leaf is found and nil, false otherwise.
-	Maximum() (max Value, found bool)
+	Maximum() (Value, bool)
 
 	// Returns size of the tree
 	Size() int
 }
 
-// New creates a new adaptive radix tree
+// New creates a new adaptive radix tree.
 func New() Tree {
 	return newTree()
 }

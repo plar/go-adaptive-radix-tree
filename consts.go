@@ -1,6 +1,6 @@
 package art
 
-// node constraints
+// node constraints.
 const (
 	node4Min = 2
 	node4Max = 4
