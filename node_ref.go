@@ -27,18 +27,18 @@ type noder interface {
 	minimum() *leaf
 	maximum() *leaf
 
-	index(byte) int
+	index(keyChar) int
 	childAt(int) **nodeRef
-	zeroChild() **nodeRef
+	childZero() **nodeRef
 
-	canAddChild() bool
+	hasCapacityForChild() bool
 	grow() *nodeRef
 
-	canShrinkNode() bool
+	isReadyToShrink() bool
 	shrink() *nodeRef
 
-	addChild(byte, bool, *nodeRef)
-	deleteChild(byte, bool) int
+	addChild(keyChar, *nodeRef)
+	deleteChild(keyChar) int
 }
 
 // toNode converts the nodeRef to specific node type.
@@ -59,17 +59,17 @@ func toNode(an *nodeRef) noder {
 // noop is a no-op noder implementation.
 type noop struct{}
 
-func (*noop) minimum() *leaf                { return nil }
-func (*noop) maximum() *leaf                { return nil }
-func (*noop) index(byte) int                { return indexNotFound }
-func (*noop) childAt(int) **nodeRef         { return &nodeNotFound }
-func (*noop) zeroChild() **nodeRef          { return &nodeNotFound }
-func (*noop) canAddChild() bool             { return true }
-func (*noop) grow() *nodeRef                { return nil }
-func (*noop) canShrinkNode() bool           { return false }
-func (*noop) shrink() *nodeRef              { return nil }
-func (*noop) addChild(byte, bool, *nodeRef) {}
-func (*noop) deleteChild(byte, bool) int    { return 0 }
+func (*noop) minimum() *leaf             { return nil }
+func (*noop) maximum() *leaf             { return nil }
+func (*noop) index(keyChar) int          { return indexNotFound }
+func (*noop) childAt(int) **nodeRef      { return &nodeNotFound }
+func (*noop) childZero() **nodeRef       { return &nodeNotFound }
+func (*noop) hasCapacityForChild() bool  { return true }
+func (*noop) grow() *nodeRef             { return nil }
+func (*noop) isReadyToShrink() bool      { return false }
+func (*noop) shrink() *nodeRef           { return nil }
+func (*noop) addChild(keyChar, *nodeRef) {}
+func (*noop) deleteChild(keyChar) int    { return 0 }
 
 // noopNoder is the default Noder implementation.
 var noopNoder noder = &noop{}
@@ -135,20 +135,11 @@ func (nr *nodeRef) maximum() *leaf {
 	return toNode(nr).maximum()
 }
 
-// findChildByKey returns the child node pointer by the given key and key index.
-func (nr *nodeRef) findChildByKey(key Key, keyIdx int) **nodeRef {
+// findChildByKey returns the child node reference for the given key.
+func (nr *nodeRef) findChildByKey(key Key, keyOffset int) **nodeRef {
 	n := toNode(nr)
 
-	ch, valid := key.charAt(keyIdx)
-	if !valid {
-		return n.zeroChild()
-	}
-
-	idx := n.index(ch)
-	if idx == indexNotFound {
-		return &nodeNotFound
-	}
-
+	idx := n.index(key.charAt(keyOffset))
 	return n.childAt(idx)
 }
 
@@ -161,25 +152,25 @@ func (nr *nodeRef) leaf() *leaf       { return (*leaf)(nr.ref) }    // leaf cast
 
 // addChild adds a new child node to the current node.
 // If the node is full, it grows to the next node type.
-func (nr *nodeRef) addChild(ch byte, valid bool, child *nodeRef) {
+func (nr *nodeRef) addChild(kc keyChar, child *nodeRef) {
 	n := toNode(nr)
 
-	if n.canAddChild() {
-		n.addChild(ch, valid, child)
+	if n.hasCapacityForChild() {
+		n.addChild(kc, child)
 	} else {
-		newNode := n.grow()                // grow to the next node type
-		newNode.addChild(ch, valid, child) // recursively add the child to the new node
-		replaceNode(nr, newNode)           // replace the current node with the new node
+		biggerNode := n.grow()         // grow to the next node type
+		biggerNode.addChild(kc, child) // recursively add the child to the new node
+		replaceNode(nr, biggerNode)    // replace the current node with the new node
 	}
 }
 
 // deleteChild deletes the child node from the current node.
 // If the node can shrink, it shrinks to the previous node type.
-func (nr *nodeRef) deleteChild(ch byte, valid bool) bool {
+func (nr *nodeRef) deleteChild(kc keyChar) bool {
 	n := toNode(nr)
 
-	n.deleteChild(ch, valid)
-	if n.canShrinkNode() {
+	n.deleteChild(kc)
+	if n.isReadyToShrink() {
 		shrankNode := n.shrink()
 		replaceNode(nr, shrankNode)
 		return true
@@ -199,19 +190,20 @@ func (nr *nodeRef) match(key Key, keyOffset int) int /* 1st mismatch index*/ {
 		return 0
 	}
 
-	node := nr.node()
+	n := nr.node()
+
 	// the maximum length we can check against the node's prefix
-	prefLen := min(int(node.prefixLen), MaxPrefixLen)
-	checkLen := min(prefLen, keyRemaining)
+	maxPrefixLen := min(int(n.prefixLen), MaxPrefixLen)
+	limit := min(maxPrefixLen, keyRemaining)
 
 	// compare the key against the node's prefix
-	for i := 0; i < checkLen; i++ {
-		if node.prefix[i] != key[keyOffset+i] {
+	for i := 0; i < limit; i++ {
+		if n.prefix[i] != key[keyOffset+i] {
 			return i
 		}
 	}
 
-	return checkLen
+	return limit
 }
 
 // matchDeep returns the first index where the key mismatches,

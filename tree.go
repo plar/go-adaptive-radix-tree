@@ -4,18 +4,17 @@ package art
 type treeOpResult int
 
 const (
-	// treeOpInserted indicates that the key/value was inserted.
-	treeOpInserted treeOpResult = iota
+	// treeOpNoChange indicates that the key was not found.
+	treeOpNoChange treeOpResult = iota
 
-	// treeOpUpdated indicates that the existing key
-	// was updated with a new value.
+	// treeOpInserted indicates that the key/value was inserted.
+	treeOpInserted
+
+	// treeOpUpdated indicates that the existing key was updated with a new value.
 	treeOpUpdated
 
 	// treeOpDeleted indicates that the key was deleted.
 	treeOpDeleted
-
-	// treeOpNotFound indicates that the key was not found.
-	treeOpNoChange
 )
 
 // tree is the main data structure of the ART tree.
@@ -50,8 +49,9 @@ func (tr *tree) Delete(key Key) (Value, bool) {
 }
 
 func (tr *tree) Search(key Key) (Value, bool) {
-	current := tr.root
 	keyOffset := 0
+
+	current := tr.root
 	for current != nil {
 		if current.isLeaf() {
 			leaf := current.leaf()
@@ -63,7 +63,6 @@ func (tr *tree) Search(key Key) (Value, bool) {
 		}
 
 		curNode := current.node()
-
 		if curNode.prefixLen > 0 {
 			prefixLen := current.match(key, keyOffset)
 			if prefixLen != min(int(curNode.prefixLen), MaxPrefixLen) {

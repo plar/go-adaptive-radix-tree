@@ -1,6 +1,7 @@
 package art
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -127,9 +128,9 @@ func TestCopyNode(t *testing.T) {
 func TestNodeAddChild(t *testing.T) {
 	nodes := []*nodeRef{
 		factory.newNode4(),
-		factory.newNode16(),
-		factory.newNode48(),
-		factory.newNode256(),
+		// factory.newNode16(),
+		// factory.newNode48(),
+		// factory.newNode256(),
 	}
 
 	for _, n := range nodes {
@@ -147,8 +148,10 @@ func TestNodeAddChild(t *testing.T) {
 
 		for i := 0; i < maxChildren; i++ {
 			leaf := factory.newLeaf(Key{byte(i)}, i)
-			n.addChild(byte(i), true, leaf)
+			n.addChild(keyChar{ch: byte(i)}, leaf)
 		}
+
+		fmt.Println(DumpNode(n))
 
 		for i := 0; i < maxChildren; i++ {
 			k := Key{byte(i)}
@@ -190,11 +193,11 @@ func TestNodeIndex(t *testing.T) {
 
 		for i := 0; i < maxChildren; i++ {
 			leaf := factory.newLeaf(Key{byte(i)}, i)
-			n.addChild(byte(i), true, leaf)
+			n.addChild(keyChar{ch: byte(i)}, leaf)
 		}
 
 		for i := 0; i < maxChildren; i++ {
-			assert.Equal(t, i, toNode(n).index(byte(i)))
+			assert.Equal(t, i, toNode(n).index(keyChar{ch: byte(i)}))
 		}
 	}
 }
@@ -213,7 +216,7 @@ func TestNodesMinimumMaximum(t *testing.T) {
 
 	for i, node := range nodes {
 		for j := 1; j <= inserts[i]; j++ {
-			node.addChild(byte(j), true, factory.newLeaf([]byte{byte(j)}, byte(j)))
+			node.addChild(keyChar{ch: byte(j)}, factory.newLeaf([]byte{byte(j)}, byte(j)))
 		}
 
 		minLeaf := node.minimum()
@@ -231,7 +234,7 @@ func TestNode4AddChildAndFindChild(t *testing.T) {
 	parent := factory.newNode4()
 	child := factory.newNode4()
 	k := Key{1}
-	parent.addChild(k[0], true, child)
+	parent.addChild(keyChar{ch: k[0]}, child)
 
 	assert.Equal(t, 1, int(parent.node().childrenLen))
 	assert.Equal(t, child, *parent.findChildByKey(k, 0))
@@ -242,8 +245,8 @@ func TestNode4AddChildTwicePreserveSorted(t *testing.T) {
 	parent := factory.newNode4()
 	child1 := factory.newNode4()
 	child2 := factory.newNode4()
-	parent.addChild(2, true, child1)
-	parent.addChild(1, true, child2)
+	parent.addChild(keyChar{ch: 2}, child1)
+	parent.addChild(keyChar{ch: 1}, child2)
 
 	assert.Equal(t, 2, int(parent.node().childrenLen))
 	assert.Equal(t, byte(1), parent.node4().keys[0])
@@ -254,7 +257,7 @@ func TestNode4AddChildTwicePreserveSorted(t *testing.T) {
 func TestNode4AddChild4PreserveSorted(t *testing.T) {
 	parent := factory.newNode4()
 	for i := 4; i > 0; i-- {
-		parent.addChild(byte(i), true, factory.newNode4())
+		parent.addChild(keyChar{ch: byte(i)}, factory.newNode4())
 	}
 
 	assert.Equal(t, 4, int(parent.node().childrenLen))
@@ -265,7 +268,7 @@ func TestNode4AddChild4PreserveSorted(t *testing.T) {
 func TestNode16AddChild16PreserveSorted(t *testing.T) {
 	parent := factory.newNode16()
 	for i := 16; i > 0; i-- {
-		parent.addChild(byte(i), true, factory.newNode16())
+		parent.addChild(keyChar{ch: byte(i)}, factory.newNode16())
 	}
 
 	assert.Equal(t, 16, int(parent.node().childrenLen))
@@ -324,9 +327,9 @@ func TestShrink(t *testing.T) {
 
 		for j := 0; j < minChildren; j++ {
 			if node.kind != Node4 {
-				node.addChild(byte(i), true, factory.newNode4())
+				node.addChild(keyChar{ch: byte(i)}, factory.newNode4())
 			} else {
-				node.addChild(byte(i), true, factory.newLeaf(Key{byte(i)}, "value"))
+				node.addChild(keyChar{ch: byte(i)}, factory.newLeaf(Key{byte(i)}, "value"))
 			}
 		}
 

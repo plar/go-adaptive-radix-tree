@@ -45,21 +45,27 @@ func (n *node16) maximum() *leaf {
 }
 
 // index returns the child index for the given key.
-func (n *node16) index(ch byte) int {
-	return findIndex(n.keys[:n.childrenLen], ch)
+func (n *node16) index(kc keyChar) int {
+	if kc.invalid {
+		return node16Max
+	}
+	return findIndex(n.keys[:n.childrenLen], kc.ch)
 }
 
 // childAt returns the child at the given index.
 func (n *node16) childAt(idx int) **nodeRef {
+	if idx < 0 || idx >= len(n.children) {
+		return &nodeNotFound
+	}
 	return &n.children[idx]
 }
 
-func (n *node16) zeroChild() **nodeRef {
+func (n *node16) childZero() **nodeRef {
 	return &n.children[node16Max]
 }
 
-// canAddChild returns true if the node has room for more children.
-func (n *node16) canAddChild() bool {
+// hasCapacityForChild returns true if the node has room for more children.
+func (n *node16) hasCapacityForChild() bool {
 	return n.childrenLen < node16Max
 }
 
@@ -85,7 +91,7 @@ func (n *node16) grow() *nodeRef {
 }
 
 // caShrinkNode returns true if the node can be shriken.
-func (n *node16) canShrinkNode() bool {
+func (n *node16) isReadyToShrink() bool {
 	return n.childrenLen < node16Min
 }
 
@@ -117,21 +123,20 @@ func (n *node16) hasChild(idx int) bool {
 }
 
 // addChild adds a new child to the node.
-func (n *node16) addChild(ch byte, valid bool, child *nodeRef) {
-	if !valid { // handle zero byte in the key
-		n.children[node16Max] = child
-		return
-	}
-
-	pos := n.findInsertPos(ch)
+func (n *node16) addChild(kc keyChar, child *nodeRef) {
+	pos := n.findInsertPos(kc)
 	n.makeRoom(pos)
-	n.insertChildAt(pos, ch, child)
+	n.insertChildAt(pos, kc.ch, child)
 }
 
 // find the insert position for the new child
-func (n *node16) findInsertPos(ch byte) int {
+func (n *node16) findInsertPos(kc keyChar) int {
+	if kc.invalid {
+		return node16Max
+	}
+
 	for i := 0; i < int(n.childrenLen); i++ {
-		if n.keys[i] > ch {
+		if n.keys[i] > kc.ch {
 			return i
 		}
 	}
@@ -140,7 +145,7 @@ func (n *node16) findInsertPos(ch byte) int {
 
 // makeRoom makes room for a new child at the given position.
 func (n *node16) makeRoom(pos int) {
-	if pos >= int(n.childrenLen) {
+	if pos < 0 || pos >= int(n.childrenLen) {
 		return
 	}
 
@@ -155,6 +160,11 @@ func (n *node16) makeRoom(pos int) {
 
 // insertChildAt inserts a new child at the given position.
 func (n *node16) insertChildAt(pos int, ch byte, child *nodeRef) {
+	if pos == node16Max {
+		n.children[pos] = child
+		return
+	}
+
 	n.keys[pos] = ch
 	n.present.setAt(pos)
 	n.children[pos] = child
@@ -162,11 +172,11 @@ func (n *node16) insertChildAt(pos int, ch byte, child *nodeRef) {
 }
 
 // deleChild removes a child from the node.
-func (n *node16) deleteChild(ch byte, valid bool) int {
-	if !valid {
+func (n *node16) deleteChild(kc keyChar) int {
+	if kc.invalid {
 		// clear the zero byte child reference
 		n.children[node16Max] = nil
-	} else if idx := n.index(ch); idx >= 0 {
+	} else if idx := n.index(kc); idx >= 0 {
 		n.deleteChildAt(idx)
 		n.clearLastElement()
 	}

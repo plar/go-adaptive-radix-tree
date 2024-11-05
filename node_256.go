@@ -17,33 +17,39 @@ func (n *node256) maximum() *leaf {
 }
 
 // index returns the index of the child with the given key.
-func (n *node256) index(ch byte) int {
-	return int(ch)
+func (n *node256) index(kc keyChar) int {
+	if kc.invalid { // handle zero byte in the key
+		return node256Max
+	}
+	return int(kc.ch)
 }
 
 // childAt returns the child at the given index.
 func (n *node256) childAt(idx int) **nodeRef {
+	if idx < 0 || idx >= len(n.children) {
+		return &nodeNotFound
+	}
 	return &n.children[idx]
 }
 
-func (n *node256) zeroChild() **nodeRef {
+func (n *node256) childZero() **nodeRef {
 	return &n.children[node256Max]
 }
 
 // addChild adds a new child to the node.
-func (n *node256) addChild(ch byte, valid bool, child *nodeRef) {
-	if !valid { // handle zero byte in the key
+func (n *node256) addChild(kc keyChar, child *nodeRef) {
+	if kc.invalid { // handle zero byte in the key
 		n.children[node256Max] = child
 		return
 	}
 
 	// insert new child
-	n.children[ch] = child
+	n.children[kc.ch] = child
 	n.childrenLen++
 }
 
-// canAddChild for node256 always returns true.
-func (n *node256) canAddChild() bool {
+// hasCapacityForChild for node256 always returns true.
+func (n *node256) hasCapacityForChild() bool {
 	return true
 }
 
@@ -53,8 +59,8 @@ func (n *node256) grow() *nodeRef {
 	return nil
 }
 
-// canShrinkNode returns true if the node can be shrinked.
-func (n *node256) canShrinkNode() bool {
+// isReadyToShrink returns true if the node can be shrinked.
+func (n *node256) isReadyToShrink() bool {
 	return n.childrenLen < node256Min
 }
 
@@ -79,11 +85,11 @@ func (n *node256) shrink() *nodeRef {
 }
 
 // deleteChild removes the child with the given key.
-func (n *node256) deleteChild(ch byte, valid bool) int {
-	if !valid {
+func (n *node256) deleteChild(kc keyChar) int {
+	if kc.invalid {
 		// clear the zero byte child reference
 		n.children[node256Max] = nil
-	} else if idx := n.index(ch); n.children[idx] != nil {
+	} else if idx := n.index(kc); n.children[idx] != nil {
 		// clear the child at the given index
 		n.children[idx] = nil
 		n.childrenLen--

@@ -16,13 +16,24 @@ func (k Kind) String() string {
 	return []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}[k]
 }
 
+// keyChar stores the key character and
+// an flag to indicate if the key char is invalid.
+type keyChar struct {
+	ch      byte
+	invalid bool
+}
+
+// singleton keyChar instance to indicate
+// that the key char is invalid.
+var keyCharInvalid = keyChar{invalid: true}
+
 // charAt returns the character at the given index.
 // If the index is out of bounds, it returns 0 and false.
-func (k Key) charAt(idx int) (byte, bool) {
+func (k Key) charAt(idx int) keyChar {
 	if k.isValid(idx) {
-		return k[idx], true
+		return keyChar{ch: k[idx]}
 	}
-	return 0, false
+	return keyCharInvalid
 }
 
 // isValid checks if the given index is within the bounds of the key.

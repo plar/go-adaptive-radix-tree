@@ -38,7 +38,7 @@ func (tr *tree) splitLeaf(nrpCurLeaf **nodeRef, key Key, value Value, keyOffset 
 	nrCurLeaf := *nrpCurLeaf
 	curLeaf := nrCurLeaf.leaf()
 
-	keysLCP := findLongestCommonPrefix(curLeaf.key, key, keyOffset)
+	keysLCP := findLCP(curLeaf.key[keyOffset:], key[keyOffset:])
 
 	// Create a new node4 with the longest common prefix
 	// between the old leaf and the new leaf key.
@@ -49,11 +49,8 @@ func (tr *tree) splitLeaf(nrpCurLeaf **nodeRef, key Key, value Value, keyOffset 
 	// branch by the first differing character
 	// add the old leaf and the new leaf as children
 	// to a newly created node4.
-	ch, valid := curLeaf.key.charAt(keyOffset)
-	nr4.addChild(ch, valid, nrCurLeaf) // old leaf
-
-	ch, valid = key.charAt(keyOffset)
-	nr4.addChild(ch, valid, factory.newLeaf(key, value)) // new leaf
+	nr4.addChild(curLeaf.key.charAt(keyOffset), nrCurLeaf)           // old leaf
+	nr4.addChild(key.charAt(keyOffset), factory.newLeaf(key, value)) // new leaf
 
 	// replace the old leaf with the new node4
 	replaceRef(nrpCurLeaf, nr4)
@@ -94,16 +91,14 @@ func (tr *tree) reassignPrefix(newNRP *nodeRef, curNRP *nodeRef, key Key, value 
 
 	// Adjust prefix and add children
 	leaf := curNRP.minimum()
-	ch, valid := leaf.key.charAt(idx)
-	newNRP.addChild(ch, valid, curNRP)
+	newNRP.addChild(leaf.key.charAt(idx), curNRP)
 
 	for i := 0; i < min(int(curNode.prefixLen), MaxPrefixLen); i++ {
 		curNode.prefix[i] = leaf.key[keyOffset+mismatchIdx+i+1]
 	}
 
 	// Insert the new leaf
-	ch, valid = key.charAt(idx)
-	newNRP.addChild(ch, valid, factory.newLeaf(key, value))
+	newNRP.addChild(key.charAt(idx), factory.newLeaf(key, value))
 }
 
 func (tr *tree) continueInsertion(nrp **nodeRef, key Key, value Value, keyOffset int) (Value, treeOpResult) {
@@ -115,7 +110,6 @@ func (tr *tree) continueInsertion(nrp **nodeRef, key Key, value Value, keyOffset
 	}
 
 	// No child found, create a new leaf node
-	ch, valid := key.charAt(int(keyOffset))
-	nr.addChild(ch, valid, factory.newLeaf(key, value))
+	nr.addChild(key.charAt(int(keyOffset)), factory.newLeaf(key, value))
 	return nil, treeOpInserted
 }

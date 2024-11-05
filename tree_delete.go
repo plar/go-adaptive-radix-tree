@@ -53,7 +53,6 @@ func (tr *tree) handleDeletionInChild(curNR, nextNR *nodeRef, key Key, keyOffset
 		return nil, treeOpNoChange
 	}
 
-	ch, valid := key.charAt(keyOffset)
-	curNR.deleteChild(ch, valid)
+	curNR.deleteChild(key.charAt(keyOffset))
 	return leaf.value, treeOpDeleted
 }

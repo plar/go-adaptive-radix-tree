@@ -3,8 +3,9 @@ package art
 func min(a, b int) int {
 	if a < b {
 		return a
+	} else {
+		return b
 	}
-	return b
 }
 
 // copy the node from src to dst
@@ -23,6 +24,7 @@ func findIndex(keys []byte, ch byte) int {
 			return i
 		}
 	}
+
 	return indexNotFound
 }
 
@@ -38,6 +40,19 @@ func findLongestCommonPrefix(key1 Key, key2 Key, keyOffset int) int {
 	}
 
 	return idx - keyOffset
+}
+
+// findLongestCommonPrefix returns the longest common prefix of key1 and key2
+func findLCP(key1 Key, key2 Key) int {
+	limit := min(len(key1), len(key2))
+
+	for i := 0; i < limit; i++ {
+		if key1[i] != key2[i] {
+			return i
+		}
+	}
+
+	return limit
 }
 
 // find the minimum leaf node

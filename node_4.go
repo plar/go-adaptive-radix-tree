@@ -19,21 +19,27 @@ func (n *node4) maximum() *leaf {
 }
 
 // index returns the index of the given character.
-func (n *node4) index(ch byte) int {
-	return findIndex(n.keys[:n.childrenLen], ch)
+func (n *node4) index(kc keyChar) int {
+	if kc.invalid {
+		return node4Max
+	}
+	return findIndex(n.keys[:n.childrenLen], kc.ch)
 }
 
 // childAt returns the child at the given index.
 func (n *node4) childAt(idx int) **nodeRef {
+	if idx < 0 || idx >= len(n.children) {
+		return &nodeNotFound
+	}
 	return &n.children[idx]
 }
 
-func (n *node4) zeroChild() **nodeRef {
+func (n *node4) childZero() **nodeRef {
 	return &n.children[node4Max]
 }
 
-// canAddChild returns true if the node has room for more children.
-func (n *node4) canAddChild() bool {
+// hasCapacityForChild returns true if the node has room for more children.
+func (n *node4) hasCapacityForChild() bool {
 	return n.childrenLen < node4Max
 }
 
@@ -58,13 +64,11 @@ func (n *node4) grow() *nodeRef {
 	return an16
 }
 
-// canShrinkNode returns true if the node can be shrunk.
-func (n *node4) canShrinkNode() bool {
+// isReadyToShrink returns true if the node is under-utilized and ready to shrink.
+func (n *node4) isReadyToShrink() bool {
 	// we have to return the number of children for the current node(node4) as
-	// `node.numChildren` plus one if null node is not nil.
-	// `Shrink` method can be invoked after this method,
-	// `Shrink` can convert this node into a leaf node type.
-	// For all higher nodes(16/48/256) we simply copy null node to a smaller node
+	// `node.numChildren` plus one if zero node is not nil.
+	// For all higher nodes(16/48/256) we simply copy zero node to a smaller node
 	// see deleteChild() and shrink() methods for implementation details
 	numChildren := n.childrenLen
 	if n.children[node4Max] != nil {
@@ -73,55 +77,67 @@ func (n *node4) canShrinkNode() bool {
 	return numChildren < node4Min
 }
 
-// shrink converts the node4 into the leaf node or node with fewer children.
+// shrink converts the node4 into the leaf node or a node with fewer children.
 func (n *node4) shrink() *nodeRef {
-	child := n.children[0]
-	if child == nil {
-		child = n.children[node4Max]
-	}
-	if child.isLeaf() {
-		// node has only one child and it is a leaf node
-		// we can convert this node into a leaf node
-		return child
+	// Select the non-nil child node
+	var nonNilChild *nodeRef
+	if n.children[0] != nil {
+		nonNilChild = n.children[0]
+	} else {
+		nonNilChild = n.children[node4Max]
 	}
 
-	curPrefixLen := int(n.prefixLen)
-	if curPrefixLen < MaxPrefixLen {
-		n.prefix[curPrefixLen] = n.keys[0]
-		curPrefixLen++
+	// if the only child is a leaf node, return it
+	if nonNilChild.isLeaf() {
+		return nonNilChild
 	}
 
-	childNode := child.node()
-	if curPrefixLen < MaxPrefixLen {
-		childPrefixLen := min(int(childNode.prefixLen), MaxPrefixLen-curPrefixLen)
-		copy(n.prefix[curPrefixLen:], childNode.prefix[:childPrefixLen])
-		curPrefixLen += childPrefixLen
+	// update the prefix of the child node
+	n.adjustPrefix(nonNilChild.node())
+
+	return nonNilChild
+}
+
+// adjustPrefix handles prefix adjustments for a non-leaf child
+func (n *node4) adjustPrefix(childNode *node) {
+	nodePrefLen := int(n.prefixLen)
+
+	// at this point, the node has only one child
+	// copy the key part of the current node as prefix
+	if nodePrefLen < MaxPrefixLen {
+		n.prefix[nodePrefLen] = n.keys[0]
+		nodePrefLen++
 	}
 
-	prefixLen := min(curPrefixLen, MaxPrefixLen)
+	// copy the part of child prefix that fits into the current node
+	if nodePrefLen < MaxPrefixLen {
+		childPrefLen := min(int(childNode.prefixLen), MaxPrefixLen-nodePrefLen)
+		copy(n.prefix[nodePrefLen:], childNode.prefix[:childPrefLen])
+		nodePrefLen += childPrefLen
+	}
+
+	// copy the part of the current node prefix that fits into the child node
+	prefixLen := min(nodePrefLen, MaxPrefixLen)
 	copy(childNode.prefix[:], n.prefix[:prefixLen])
 	childNode.prefixLen += n.prefixLen + 1
-
-	return child
 }
 
 // addChild adds a new child to the node.
-func (n *node4) addChild(ch byte, valid bool, child *nodeRef) {
-	if !valid { // handle zero byte in the key
-		n.children[node4Max] = child
-		return
-	}
-
-	pos := n.findInsertPos(ch)
+func (n *node4) addChild(kc keyChar, child *nodeRef) {
+	pos := n.findInsertPos(kc)
 	n.makeRoom(pos)
-	n.insertChildAt(pos, ch, child)
+	n.insertChildAt(pos, kc.ch, child)
 }
 
 // find the insert position for the new child
-func (n *node4) findInsertPos(ch byte) int {
+func (n *node4) findInsertPos(kc keyChar) int {
+	if kc.invalid {
+		return node4Max
+	}
+
 	numChildren := int(n.childrenLen)
 	for i := 0; i < numChildren; i++ {
-		if n.keys[i] > ch {
+		if n.keys[i] > kc.ch {
 			return i
 		}
 	}
@@ -130,6 +146,10 @@ func (n *node4) findInsertPos(ch byte) int {
 
 // makeRoom creates space for the new child by shifting the elements to the right.
 func (n *node4) makeRoom(pos int) {
+	if pos < 0 || pos >= int(n.childrenLen) {
+		return
+	}
+
 	for i := int(n.childrenLen); i > pos; i-- {
 		n.keys[i] = n.keys[i-1]
 		n.present[i] = n.present[i-1]
@@ -139,18 +159,22 @@ func (n *node4) makeRoom(pos int) {
 
 // insertChildAt inserts the child at the given position.
 func (n *node4) insertChildAt(pos int, ch byte, child *nodeRef) {
-	n.keys[pos] = ch
-	n.present[pos] = 1
-	n.children[pos] = child
-	n.childrenLen++
+	if pos == node4Max {
+		n.children[pos] = child
+	} else {
+		n.keys[pos] = ch
+		n.present[pos] = 1
+		n.children[pos] = child
+		n.childrenLen++
+	}
 }
 
 // deleteChild deletes the child from the node.
-func (n *node4) deleteChild(ch byte, valid bool) int {
-	if !valid {
+func (n *node4) deleteChild(kc keyChar) int {
+	if kc.invalid {
 		// clear the zero byte child reference
 		n.children[node4Max] = nil
-	} else if idx := n.index(ch); idx >= 0 {
+	} else if idx := n.index(kc); idx >= 0 {
 		n.deleteChildAt(idx)
 		n.clearLastElement()
 	}

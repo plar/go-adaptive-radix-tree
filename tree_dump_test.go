@@ -22,7 +22,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n4 := factory.newNode4()
 				n4leaf := factory.newLeaf([]byte("key4"), "value4")
-				n4.addChild('k', true, n4leaf)
+				n4.addChild(keyChar{ch: 'k'}, n4leaf)
 				return &tree{root: n4}
 			},
 			golden: "test/stringer/dump4.golden",
@@ -32,7 +32,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n4 := factory.newNode4()
 				n4leaf := factory.newLeaf([]byte("key4"), []byte("value4"))
-				n4.addChild('k', true, n4leaf)
+				n4.addChild(keyChar{ch: 'k'}, n4leaf)
 				return &tree{root: n4}
 			},
 			golden: "test/stringer/dump4_binary_value.golden",
@@ -42,7 +42,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n4 := factory.newNode4()
 				n4leaf := factory.newLeaf([]byte("key4"), 4)
-				n4.addChild('k', true, n4leaf)
+				n4.addChild(keyChar{ch: 'k'}, n4leaf)
 				return &tree{root: n4}
 			},
 			golden: "test/stringer/dump4_int.golden",
@@ -53,13 +53,13 @@ func TestTreeStringer(t *testing.T) {
 				n16 := factory.newNode16()
 				n16_2 := factory.newNode16()
 				n16_2leaf := factory.newLeaf([]byte("4yek"), 4)
-				n16_2.addChild('z', true, n16_2leaf)
+				n16_2.addChild(keyChar{ch: 'z'}, n16_2leaf)
 
 				n16leaf := factory.newLeaf([]byte("key4"), 4)
 				c4leaf := factory.newLeaf([]byte("cey4"), 44)
-				n16.addChild('k', true, n16leaf)
-				n16.addChild('c', true, c4leaf)
-				n16.addChild('z', true, n16_2)
+				n16.addChild(keyChar{ch: 'k'}, n16leaf)
+				n16.addChild(keyChar{ch: 'c'}, c4leaf)
+				n16.addChild(keyChar{ch: 'z'}, n16_2)
 				return &tree{root: n16}
 			},
 			golden: "test/stringer/dump16_int_value.golden",
@@ -69,7 +69,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n16 := factory.newNode16()
 				n16leaf := factory.newLeaf([]byte("key16"), "value16")
-				n16.addChild('k', true, n16leaf)
+				n16.addChild(keyChar{ch: 'k'}, n16leaf)
 				return &tree{root: n16}
 			},
 			golden: "test/stringer/dump16.golden",
@@ -79,7 +79,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n48 := factory.newNode48()
 				n48leaf := factory.newLeaf([]byte("key48"), "value48")
-				n48.addChild('k', true, n48leaf)
+				n48.addChild(keyChar{ch: 'k'}, n48leaf)
 				return &tree{root: n48}
 			},
 			golden: "test/stringer/dump48.golden",
@@ -89,7 +89,7 @@ func TestTreeStringer(t *testing.T) {
 			tree: func() *tree {
 				n256 := factory.newNode256()
 				n256leaf := factory.newLeaf([]byte("key256"), "value256")
-				n256.addChild('k', true, n256leaf)
+				n256.addChild(keyChar{ch: 'k'}, n256leaf)
 				return &tree{root: n256}
 			},
 			golden: "test/stringer/dump256.golden",
