@@ -23,6 +23,7 @@ func (n *node4) index(kc keyChar) int {
 	if kc.invalid {
 		return node4Max
 	}
+
 	return findIndex(n.keys[:n.childrenLen], kc.ch)
 }
 
@@ -31,6 +32,7 @@ func (n *node4) childAt(idx int) **nodeRef {
 	if idx < 0 || idx >= len(n.children) {
 		return &nodeNotFound
 	}
+
 	return &n.children[idx]
 }
 
@@ -74,6 +76,7 @@ func (n *node4) isReadyToShrink() bool {
 	if n.children[node4Max] != nil {
 		numChildren++
 	}
+
 	return numChildren < node4Min
 }
 
@@ -98,7 +101,7 @@ func (n *node4) shrink() *nodeRef {
 	return nonNilChild
 }
 
-// adjustPrefix handles prefix adjustments for a non-leaf child
+// adjustPrefix handles prefix adjustments for a non-leaf child.
 func (n *node4) adjustPrefix(childNode *node) {
 	nodePrefLen := int(n.prefixLen)
 
@@ -129,7 +132,7 @@ func (n *node4) addChild(kc keyChar, child *nodeRef) {
 	n.insertChildAt(pos, kc.ch, child)
 }
 
-// find the insert position for the new child
+// find the insert position for the new child.
 func (n *node4) findInsertPos(kc keyChar) int {
 	if kc.invalid {
 		return node4Max
@@ -141,6 +144,7 @@ func (n *node4) findInsertPos(kc keyChar) int {
 			return i
 		}
 	}
+
 	return numChildren
 }
 
@@ -201,6 +205,7 @@ func (n *node4) deleteChildAt(idx int) {
 		n.present[i] = n.present[i+1]
 		n.children[i] = n.children[i+1]
 	}
+
 	n.childrenLen--
 }
 

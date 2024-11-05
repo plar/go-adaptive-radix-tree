@@ -49,6 +49,7 @@ func (n *node16) index(kc keyChar) int {
 	if kc.invalid {
 		return node16Max
 	}
+
 	return findIndex(n.keys[:n.childrenLen], kc.ch)
 }
 
@@ -57,6 +58,7 @@ func (n *node16) childAt(idx int) **nodeRef {
 	if idx < 0 || idx >= len(n.children) {
 		return &nodeNotFound
 	}
+
 	return &n.children[idx]
 }
 
@@ -77,14 +79,14 @@ func (n *node16) grow() *nodeRef {
 	copyNode(&n48.node, &n.node)
 	n48.children[node48Max] = n.children[node16Max]
 
-	pos := 0
-	for i := 0; i < int(n.childrenLen); i++ {
+	for numChildren, i := 0, 0; i < int(n.childrenLen); i++ {
 		if !n.hasChild(i) {
 			continue // skip if the key is not present
 		}
 
-		n48.insertChildAt(pos, n.keys[i], n.children[i])
-		pos++
+		n48.insertChildAt(numChildren, n.keys[i], n.children[i])
+
+		numChildren++
 	}
 
 	return an48
@@ -115,6 +117,7 @@ func (n *node16) shrink() *nodeRef {
 			n4.childrenLen++
 		}
 	}
+
 	return an4
 }
 
@@ -129,7 +132,7 @@ func (n *node16) addChild(kc keyChar, child *nodeRef) {
 	n.insertChildAt(pos, kc.ch, child)
 }
 
-// find the insert position for the new child
+// find the insert position for the new child.
 func (n *node16) findInsertPos(kc keyChar) int {
 	if kc.invalid {
 		return node16Max
@@ -140,6 +143,7 @@ func (n *node16) findInsertPos(kc keyChar) int {
 			return i
 		}
 	}
+
 	return int(n.childrenLen)
 }
 
@@ -160,15 +164,18 @@ func (n *node16) makeRoom(pos int) {
 
 // insertChildAt inserts a new child at the given position.
 func (n *node16) insertChildAt(pos int, ch byte, child *nodeRef) {
-	if pos == node16Max {
-		n.children[pos] = child
+	if pos < 0 || pos > node16Max {
 		return
 	}
 
-	n.keys[pos] = ch
-	n.present.setAt(pos)
-	n.children[pos] = child
-	n.childrenLen++
+	if pos == node16Max {
+		n.children[pos] = child
+	} else {
+		n.keys[pos] = ch
+		n.present.setAt(pos)
+		n.children[pos] = child
+		n.childrenLen++
+	}
 }
 
 // deleChild removes a child from the node.
@@ -199,6 +206,7 @@ func (n *node16) deleteChildAt(idx int) {
 	for i := idx; i < childrenLen && i+1 < node16Max; i++ {
 		n.present.shiftLeft(i)
 	}
+
 	n.childrenLen--
 }
 

@@ -38,7 +38,7 @@ func (tr *tree) splitLeaf(nrpCurLeaf **nodeRef, key Key, value Value, keyOffset 
 	nrCurLeaf := *nrpCurLeaf
 	curLeaf := nrCurLeaf.leaf()
 
-	keysLCP := findLCP(curLeaf.key[keyOffset:], key[keyOffset:])
+	keysLCP := findLongestCommonPrefix(curLeaf.key, key, keyOffset)
 
 	// Create a new node4 with the longest common prefix
 	// between the old leaf and the new leaf key.

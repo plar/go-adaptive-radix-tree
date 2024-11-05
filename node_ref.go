@@ -11,7 +11,7 @@ const indexNotFound = -1
 // nodeNotFound is a special node pointer
 // that indicates that the node is not found
 // for different internal tree operations.
-var nodeNotFound *nodeRef
+var nodeNotFound *nodeRef //nolint:gochecknoglobals
 
 // nodeRef stores all available nodes, leaf and node type.
 type nodeRef struct {
@@ -21,29 +21,46 @@ type nodeRef struct {
 	kind Kind
 }
 
-// noder is an interface that defines methods that
-// must be implemented by nodeRef and all node types.
-type noder interface {
+type nodeLeafer interface {
 	minimum() *leaf
 	maximum() *leaf
+}
 
-	index(keyChar) int
-	childAt(int) **nodeRef
-	childZero() **nodeRef
-
+type nodeSizeManager interface {
 	hasCapacityForChild() bool
 	grow() *nodeRef
 
 	isReadyToShrink() bool
 	shrink() *nodeRef
+}
 
-	addChild(keyChar, *nodeRef)
-	deleteChild(keyChar) int
+type nodeOperations interface {
+	addChild(kc keyChar, child *nodeRef)
+	deleteChild(kc keyChar) int
+}
+
+type nodeChildGetter interface {
+	childAt(idx int) **nodeRef
+	childZero() **nodeRef
+}
+
+type nodeKeyIndexer interface {
+	index(kc keyChar) int
+}
+
+// noder is an interface that defines methods that
+// must be implemented by nodeRef and all node types.
+type noder interface {
+	nodeLeafer
+	nodeOperations
+	nodeChildGetter
+	nodeKeyIndexer
+	nodeSizeManager
 }
 
 // toNode converts the nodeRef to specific node type.
 func toNode(an *nodeRef) noder {
-	switch an.kind {
+	switch an.kind { //nolint:exhaustive
 	case Node4:
 		return an.node4()
 	case Node16:
@@ -52,8 +69,9 @@ func toNode(an *nodeRef) noder {
 		return an.node48()
 	case Node256:
 		return an.node256()
+	default:
+		return noopNoder
 	}
-	return noopNoder
 }
 
 // noop is a no-op noder implementation.
@@ -72,7 +90,7 @@ func (*noop) addChild(keyChar, *nodeRef) {}
 func (*noop) deleteChild(keyChar) int    { return 0 }
 
 // noopNoder is the default Noder implementation.
-var noopNoder noder = &noop{}
+var noopNoder noder = &noop{} //nolint:gochecknoglobals
 
 // assert that all node types implement artNoder interface.
 var _ noder = (*node4)(nil)
@@ -93,6 +111,7 @@ func (nr *nodeRef) Key() Key {
 	if nr.isLeaf() {
 		return nr.leaf().key
 	}
+
 	return nil
 }
 
@@ -101,6 +120,7 @@ func (nr *nodeRef) Value() Value {
 	if nr.isLeaf() {
 		return nr.leaf().value
 	}
+
 	return nil
 }
 
@@ -113,7 +133,7 @@ func (nr *nodeRef) isLeaf() bool {
 func (nr *nodeRef) setPrefix(newPrefix []byte, prefixLen int) {
 	n := nr.node()
 
-	n.prefixLen = uint16(prefixLen)
+	n.prefixLen = uint16(prefixLen) //nolint:gosec
 	for i := 0; i < min(prefixLen, MaxPrefixLen); i++ {
 		n.prefix[i] = newPrefix[i]
 	}
@@ -124,6 +144,7 @@ func (nr *nodeRef) minimum() *leaf {
 	if nr.kind == Leaf {
 		return nr.leaf()
 	}
+
 	return toNode(nr).minimum()
 }
 
@@ -132,14 +153,15 @@ func (nr *nodeRef) maximum() *leaf {
 	if nr.kind == Leaf {
 		return nr.leaf()
 	}
+
 	return toNode(nr).maximum()
 }
 
 // findChildByKey returns the child node reference for the given key.
 func (nr *nodeRef) findChildByKey(key Key, keyOffset int) **nodeRef {
 	n := toNode(nr)
-
 	idx := n.index(key.charAt(keyOffset))
+
 	return n.childAt(idx)
 }
 
@@ -167,16 +189,17 @@ func (nr *nodeRef) addChild(kc keyChar, child *nodeRef) {
 // deleteChild deletes the child node from the current node.
 // If the node can shrink, it shrinks to the previous node type.
 func (nr *nodeRef) deleteChild(kc keyChar) bool {
+	shrank := false
 	n := toNode(nr)
-
 	n.deleteChild(kc)
+
 	if n.isReadyToShrink() {
+		shrank = true
 		shrankNode := n.shrink()
 		replaceNode(nr, shrankNode)
-		return true
 	}
 
-	return false
+	return shrank
 }
 
 // match finds the first mismatched index between

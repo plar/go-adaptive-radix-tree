@@ -16,8 +16,8 @@ func (k Kind) String() string {
 	return []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}[k]
 }
 
-// keyChar stores the key character and
-// an flag to indicate if the key char is invalid.
+// keyChar stores the key character and an flag
+// to indicate if the key char is invalid.
 type keyChar struct {
 	ch      byte
 	invalid bool
@@ -25,14 +25,17 @@ type keyChar struct {
 
 // singleton keyChar instance to indicate
 // that the key char is invalid.
-var keyCharInvalid = keyChar{invalid: true}
+//
+//nolint:gochecknoglobals
+var keyCharInvalid = keyChar{ch: 0, invalid: true}
 
 // charAt returns the character at the given index.
 // If the index is out of bounds, it returns 0 and false.
 func (k Key) charAt(idx int) keyChar {
 	if k.isValid(idx) {
-		return keyChar{ch: k[idx]}
+		return keyChar{ch: k[idx]} //nolint:exhaustruct
 	}
+
 	return keyCharInvalid
 }
 
@@ -41,11 +44,12 @@ func (k Key) isValid(idx int) bool {
 	return idx >= 0 && idx < len(k)
 }
 
-// Node helpers
+// replaceRef is used to replace node in-place by updating the reference.
 func replaceRef(oldNode **nodeRef, newNode *nodeRef) {
 	*oldNode = newNode
 }
 
+// replaceNode is used to replace node in-place by updating the node.
 func replaceNode(oldNode *nodeRef, newNode *nodeRef) {
 	*oldNode = *newNode
 }

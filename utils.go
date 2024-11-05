@@ -42,19 +42,6 @@ func findLongestCommonPrefix(key1 Key, key2 Key, keyOffset int) int {
 	return idx - keyOffset
 }
 
-// findLongestCommonPrefix returns the longest common prefix of key1 and key2
-func findLCP(key1 Key, key2 Key) int {
-	limit := min(len(key1), len(key2))
-
-	for i := 0; i < limit; i++ {
-		if key1[i] != key2[i] {
-			return i
-		}
-	}
-
-	return limit
-}
-
 // find the minimum leaf node
 func nodeMinimum(children []*nodeRef) *leaf {
 	numChildren := len(children)

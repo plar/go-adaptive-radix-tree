@@ -21,6 +21,7 @@ func (n *node256) index(kc keyChar) int {
 	if kc.invalid { // handle zero byte in the key
 		return node256Max
 	}
+
 	return int(kc.ch)
 }
 
@@ -29,6 +30,7 @@ func (n *node256) childAt(idx int) **nodeRef {
 	if idx < 0 || idx >= len(n.children) {
 		return &nodeNotFound
 	}
+
 	return &n.children[idx]
 }
 
@@ -38,14 +40,14 @@ func (n *node256) childZero() **nodeRef {
 
 // addChild adds a new child to the node.
 func (n *node256) addChild(kc keyChar, child *nodeRef) {
-	if kc.invalid { // handle zero byte in the key
+	if kc.invalid {
+		// handle zero byte in the key
 		n.children[node256Max] = child
-		return
+	} else {
+		// insert new child
+		n.children[kc.ch] = child
+		n.childrenLen++
 	}
-
-	// insert new child
-	n.children[kc.ch] = child
-	n.childrenLen++
 }
 
 // hasCapacityForChild for node256 always returns true.
@@ -59,7 +61,7 @@ func (n *node256) grow() *nodeRef {
 	return nil
 }
 
-// isReadyToShrink returns true if the node can be shrinked.
+// isReadyToShrink returns true if the node can be shrunk.
 func (n *node256) isReadyToShrink() bool {
 	return n.childrenLen < node256Min
 }
@@ -72,15 +74,16 @@ func (n *node256) shrink() *nodeRef {
 	copyNode(&n48.node, &n.node)
 	n48.children[node48Min] = n.children[node256Max]
 
-	pos := 0
-	for i := 0; i < node256Max; i++ {
+	for numChildren, i := 0, 0; i < node256Max; i++ {
 		if n.children[i] == nil {
 			continue // skip if the child is nil
 		}
 		// copy elements from n256 to n48 to the last position
-		n48.insertChildAt(pos, byte(i), n.children[i])
-		pos++
+		n48.insertChildAt(numChildren, byte(i), n.children[i])
+
+		numChildren++
 	}
+
 	return an48
 }
 

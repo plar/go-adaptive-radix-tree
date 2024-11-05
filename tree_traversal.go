@@ -11,13 +11,13 @@ const (
 // nullIdx is a special index value to indicate that there is no child node.
 const nullIdx = -1
 
-// iteratorLevel is a level of the iterator.
+// iteratorLevel represents a level of the iterator.
 type iteratorLevel struct {
 	node     *nodeRef
 	childIdx int
 }
 
-// iterator is an iterator struct for the tree.
+// Iterator is a struct for tree traversal iteration.
 type iterator struct {
 	version    int // tree version to detect concurrent modifications
 	tree       *tree
@@ -26,8 +26,7 @@ type iterator struct {
 	depth      []*iteratorLevel
 }
 
-// bufferedIterator is a buffered iterator struct for the tree.
-// It is used to implement the HasNext and Next methods.
+// BufferedIterator implements HasNext and Next methods for buffered iteration.
 type bufferedIterator struct {
 	options  int
 	nextNode Node
@@ -35,7 +34,7 @@ type bufferedIterator struct {
 	it       *iterator
 }
 
-// newTreeIterator creates a new tree iterator.
+// newTreeIterator creates a new tree iterator for the tree.
 func newTreeIterator(tr *tree) *iterator {
 	return &iterator{
 		version:    tr.version,
@@ -73,9 +72,12 @@ func traverseFilter(options int, callback Callback) Callback {
 	return func(node Node) bool {
 		if options&TraverseLeaf == TraverseLeaf && node.Kind() == Leaf {
 			return callback(node)
-		} else if options&TraverseNode == TraverseNode && node.Kind() != Leaf {
+		}
+
+		if options&TraverseNode == TraverseNode && node.Kind() != Leaf {
 			return callback(node)
 		}
+
 		return true
 	}
 }

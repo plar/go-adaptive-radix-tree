@@ -78,6 +78,7 @@ func (n *node48) childAt(idx int) **nodeRef {
 	if idx < 0 || idx >= len(n.children) {
 		return &nodeNotFound
 	}
+
 	return &n.children[idx]
 }
 
@@ -100,7 +101,7 @@ func (n *node48) grow() *nodeRef {
 
 	for i := 0; i < node256Max; i++ {
 		if n.hasChild(i) {
-			n256.addChild(keyChar{ch: byte(i)}, n.children[n.keys[i]])
+			n256.addChild(keyChar{ch: byte(i)}, n.children[n.keys[i]]) //nolint:exhaustruct
 		}
 	}
 
@@ -119,8 +120,8 @@ func (n *node48) shrink() *nodeRef {
 
 	copyNode(&n16.node, &n.node)
 	n16.children[node16Max] = n.children[node48Max]
+	numChildren := 0
 
-	pos := 0
 	for i, idx := range n.keys {
 		if !n.hasChild(i) {
 			continue // skip if the key is not present
@@ -132,8 +133,9 @@ func (n *node48) shrink() *nodeRef {
 		}
 
 		// copy elements from n48 to n16 to the last position
-		n16.insertChildAt(pos, byte(i), child)
-		pos++
+		n16.insertChildAt(numChildren, byte(i), child)
+
+		numChildren++
 	}
 
 	return an16
@@ -149,7 +151,7 @@ func (n *node48) addChild(kc keyChar, child *nodeRef) {
 	n.insertChildAt(pos, kc.ch, child)
 }
 
-// find the insert position for the new child
+// find the insert position for the new child.
 func (n *node48) findInsertPos(kc keyChar) int {
 	if kc.invalid {
 		return node48Max
@@ -159,6 +161,7 @@ func (n *node48) findInsertPos(kc keyChar) int {
 	for i < node48Max && n.children[i] != nil {
 		i++
 	}
+
 	return i
 }
 
@@ -166,12 +169,12 @@ func (n *node48) findInsertPos(kc keyChar) int {
 func (n *node48) insertChildAt(pos int, ch byte, child *nodeRef) {
 	if pos == node48Max {
 		n.children[node48Max] = child
-		return
+	} else {
+		n.keys[ch] = byte(pos)
+		n.present.setAt(int(ch))
+		n.children[pos] = child
+		n.childrenLen++
 	}
-	n.keys[ch] = byte(pos)
-	n.present.setAt(int(ch))
-	n.children[pos] = child
-	n.childrenLen++
 }
 
 // deleteChild removes the child with the given key.
@@ -184,6 +187,7 @@ func (n *node48) deleteChild(kc keyChar) int {
 		n.children[idx] = nil
 		n.keys[kc.ch] = 0
 		n.present.clearAt(int(kc.ch))
+
 		n.childrenLen--
 	}
 
