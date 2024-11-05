@@ -3,14 +3,14 @@ package art
 // node4 represents a node with 4 children.
 type node4 struct {
 	node
-	children [node4Max]*nodeRef // pointers to the child nodes
-	keys     [node4Max]byte     // keys for the children
-	present  [node4Max]byte     // present bits for the keys
+	children [node4Max + 1]*nodeRef // pointers to the child nodes, +1 is for the zero byte child
+	keys     [node4Max]byte         // keys for the children
+	present  [node4Max]byte         // present bits for the keys
 }
 
 // minimum returns the minimum leaf node.
 func (n *node4) minimum() *leaf {
-	return nodeMinimum(n.zeroChild, n.children[:])
+	return nodeMinimum(n.children[:])
 }
 
 // maximum returns the maximum leaf node.
@@ -28,6 +28,10 @@ func (n *node4) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
+func (n *node4) zeroChild() **nodeRef {
+	return &n.children[node4Max]
+}
+
 // canAddChild returns true if the node has room for more children.
 func (n *node4) canAddChild() bool {
 	return n.childrenLen < node4Max
@@ -37,7 +41,9 @@ func (n *node4) canAddChild() bool {
 func (n *node4) grow() *nodeRef {
 	an16 := factory.newNode16()
 	n16 := an16.node16()
+
 	copyNode(&n16.node, &n.node)
+	n16.children[node16Max] = n.children[node4Max]
 
 	for i := 0; i < int(n.childrenLen); i++ {
 		// skip if the key is not present
@@ -61,7 +67,7 @@ func (n *node4) canShrinkNode() bool {
 	// For all higher nodes(16/48/256) we simply copy null node to a smaller node
 	// see deleteChild() and shrink() methods for implementation details
 	numChildren := n.childrenLen
-	if n.zeroChild != nil {
+	if n.children[node4Max] != nil {
 		numChildren++
 	}
 	return numChildren < node4Min
@@ -71,9 +77,8 @@ func (n *node4) canShrinkNode() bool {
 func (n *node4) shrink() *nodeRef {
 	child := n.children[0]
 	if child == nil {
-		child = n.zeroChild
+		child = n.children[node4Max]
 	}
-
 	if child.isLeaf() {
 		// node has only one child and it is a leaf node
 		// we can convert this node into a leaf node
@@ -103,7 +108,7 @@ func (n *node4) shrink() *nodeRef {
 // addChild adds a new child to the node.
 func (n *node4) addChild(ch byte, valid bool, child *nodeRef) {
 	if !valid { // handle zero byte in the key
-		n.zeroChild = child
+		n.children[node4Max] = child
 		return
 	}
 
@@ -114,13 +119,13 @@ func (n *node4) addChild(ch byte, valid bool, child *nodeRef) {
 
 // find the insert position for the new child
 func (n *node4) findInsertPos(ch byte) int {
-	var insertPos int
-	for ; insertPos < int(n.childrenLen); insertPos++ {
-		if n.keys[insertPos] > ch {
-			break
+	numChildren := int(n.childrenLen)
+	for i := 0; i < numChildren; i++ {
+		if n.keys[i] > ch {
+			return i
 		}
 	}
-	return insertPos
+	return numChildren
 }
 
 // makeRoom creates space for the new child by shifting the elements to the right.
@@ -144,7 +149,7 @@ func (n *node4) insertChildAt(pos int, ch byte, child *nodeRef) {
 func (n *node4) deleteChild(ch byte, valid bool) int {
 	if !valid {
 		// clear the zero byte child reference
-		n.zeroChild = nil
+		n.children[node4Max] = nil
 	} else if idx := n.index(ch); idx >= 0 {
 		n.deleteChildAt(idx)
 		n.clearLastElement()
@@ -157,7 +162,7 @@ func (n *node4) deleteChild(ch byte, valid bool) int {
 	// For all higher nodes(16/48/256) we simply copy null node to a smaller node
 	// see deleteChild() and shrink() methods for implementation details
 	numChildren := int(n.childrenLen)
-	if n.zeroChild != nil {
+	if n.children[node4Max] != nil {
 		numChildren++
 	}
 

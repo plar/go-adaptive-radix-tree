@@ -3,12 +3,12 @@ package art
 // Node with 256 children.
 type node256 struct {
 	node
-	children [node256Max]*nodeRef
+	children [node256Max + 1]*nodeRef // +1 is for the zero byte child
 }
 
 // minimum returns the minimum leaf node.
 func (n *node256) minimum() *leaf {
-	return nodeMinimum(n.zeroChild, n.children[:])
+	return nodeMinimum(n.children[:])
 }
 
 // maximum returns the maximum leaf node.
@@ -26,10 +26,14 @@ func (n *node256) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
+func (n *node256) zeroChild() **nodeRef {
+	return &n.children[node256Max]
+}
+
 // addChild adds a new child to the node.
 func (n *node256) addChild(ch byte, valid bool, child *nodeRef) {
 	if !valid { // handle zero byte in the key
-		n.zeroChild = child
+		n.children[node256Max] = child
 		return
 	}
 
@@ -60,18 +64,17 @@ func (n *node256) shrink() *nodeRef {
 	n48 := an48.node48()
 
 	copyNode(&n48.node, &n.node)
+	n48.children[node48Min] = n.children[node256Max]
 
 	pos := 0
-	for ch, child := range n.children {
-		if child == nil {
+	for i := 0; i < node256Max; i++ {
+		if n.children[i] == nil {
 			continue // skip if the child is nil
 		}
-
 		// copy elements from n256 to n48 to the last position
-		n48.insertChildAt(pos, byte(ch), child)
+		n48.insertChildAt(pos, byte(i), n.children[i])
 		pos++
 	}
-
 	return an48
 }
 
@@ -79,7 +82,7 @@ func (n *node256) shrink() *nodeRef {
 func (n *node256) deleteChild(ch byte, valid bool) int {
 	if !valid {
 		// clear the zero byte child reference
-		n.zeroChild = nil
+		n.children[node256Max] = nil
 	} else if idx := n.index(ch); n.children[idx] != nil {
 		// clear the child at the given index
 		n.children[idx] = nil

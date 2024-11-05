@@ -6,10 +6,9 @@ type prefix [MaxPrefixLen]byte
 
 // node is the base struct for all node types.
 type node struct {
-	prefix      prefix   // prefix of the node
-	prefixLen   uint16   // length of the prefix
-	childrenLen uint16   // number of children in the node4, node16, node48, node256
-	zeroChild   *nodeRef // pointer to the leaf node with the null suffix
+	prefix      prefix // prefix of the node
+	prefixLen   uint16 // length of the prefix
+	childrenLen uint16 // number of children in the node4, node16, node48, node256
 }
 
 // String returns string representation of the Kind value.

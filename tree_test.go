@@ -250,7 +250,9 @@ func (ds *testDataset) processDatasetAsBytes(t *testing.T, tree *tree, bts []byt
 
 func (ds *testDataset) processDatasetAsStrings(t *testing.T, tree *tree, strs []string) {
 	for _, term := range strs {
+		fmt.Println(">>>>>>>>>", term, "before", tree.String())
 		val, deleted := tree.Delete(Key(term))
+		fmt.Println(">>>>>>>>> after ", tree.String())
 		assert.Equal(t, ds.deleteStatus, deleted, ds.message)
 
 		if s, ok := val.(string); ok {

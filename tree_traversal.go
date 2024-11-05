@@ -91,14 +91,14 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback) traverse
 
 	switch current.kind {
 	case Node4:
-		return tr.forEachChildren(current.node().zeroChild, current.node4().children[:], callback)
+		return tr.forEachChildren(current.node4().children[node4Max], current.node4().children[:node4Max], callback)
 
 	case Node16:
-		return tr.forEachChildren(current.node().zeroChild, current.node16().children[:], callback)
+		return tr.forEachChildren(current.node16().children[node16Max], current.node16().children[:node16Max], callback)
 
 	case Node48:
 		n48 := current.node48()
-		if child := n48.zeroChild; child != nil {
+		if child := n48.children[node48Max]; child != nil {
 			if tr.forEachRecursively(child, callback) == traverseStop {
 				return traverseStop
 			}
@@ -118,7 +118,7 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback) traverse
 		}
 
 	case Node256:
-		return tr.forEachChildren(current.node().zeroChild, current.node256().children[:], callback)
+		return tr.forEachChildren(current.node256().children[node256Max], current.node256().children[:node256Max], callback)
 	}
 
 	return traverseContinue
@@ -245,7 +245,7 @@ func nextChild(childIdx int, nullChild *nodeRef, children []*nodeRef) ( /*nextCh
 }
 
 func nextChild48(childIdx int, node *node48) ( /*nextChildIdx*/ int /*nextNode*/, *nodeRef) {
-	nullChild := node.zeroChild
+	nullChild := node.children[node48Max]
 
 	if childIdx == nullIdx {
 		if nullChild != nil {
@@ -278,17 +278,17 @@ func (ti *iterator) next() {
 
 		switch curNode.kind {
 		case Node4:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node4().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node4().children[node4Max], curNode.node4().children[:node4Max])
 
 		case Node16:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node16().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node16().children[node16Max], curNode.node16().children[:node16Max])
 
 		case Node48:
 			n48 := curNode.node48()
 			nextChildIdx, nextNode = nextChild48(curChildIdx, n48)
 
 		case Node256:
-			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node().zeroChild, curNode.node256().children[:])
+			nextChildIdx, nextNode = nextChild(curChildIdx, curNode.node256().children[node256Max], curNode.node256().children[:node256Max])
 		}
 
 		if nextNode == nil {

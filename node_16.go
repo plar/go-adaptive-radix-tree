@@ -29,14 +29,14 @@ func (p *present16) shiftLeft(idx int) {
 // node16 represents a node with 16 children.
 type node16 struct {
 	node
-	children [node16Max]*nodeRef
+	children [node16Max + 1]*nodeRef // +1 is for the zero byte child
 	keys     [node16Max]byte
 	present  present16
 }
 
 // minimum returns the minimum leaf node.
 func (n *node16) minimum() *leaf {
-	return nodeMinimum(n.zeroChild, n.children[:])
+	return nodeMinimum(n.children[:])
 }
 
 // maximum returns the maximum leaf node.
@@ -54,6 +54,10 @@ func (n *node16) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
+func (n *node16) zeroChild() **nodeRef {
+	return &n.children[node16Max]
+}
+
 // canAddChild returns true if the node has room for more children.
 func (n *node16) canAddChild() bool {
 	return n.childrenLen < node16Max
@@ -63,7 +67,9 @@ func (n *node16) canAddChild() bool {
 func (n *node16) grow() *nodeRef {
 	an48 := factory.newNode48()
 	n48 := an48.node48()
+
 	copyNode(&n48.node, &n.node)
+	n48.children[node48Max] = n.children[node16Max]
 
 	pos := 0
 	for i := 0; i < int(n.childrenLen); i++ {
@@ -89,6 +95,7 @@ func (n *node16) shrink() *nodeRef {
 	n4 := an4.node4()
 
 	copyNode(&n4.node, &n.node)
+	n4.children[node4Max] = n.children[node16Max]
 
 	for i := 0; i < node4Max; i++ {
 		n4.keys[i] = n.keys[i]
@@ -112,7 +119,7 @@ func (n *node16) hasChild(idx int) bool {
 // addChild adds a new child to the node.
 func (n *node16) addChild(ch byte, valid bool, child *nodeRef) {
 	if !valid { // handle zero byte in the key
-		n.zeroChild = child
+		n.children[node16Max] = child
 		return
 	}
 
@@ -158,7 +165,7 @@ func (n *node16) insertChildAt(pos int, ch byte, child *nodeRef) {
 func (n *node16) deleteChild(ch byte, valid bool) int {
 	if !valid {
 		// clear the zero byte child reference
-		n.zeroChild = nil
+		n.children[node16Max] = nil
 	} else if idx := n.index(ch); idx >= 0 {
 		n.deleteChildAt(idx)
 		n.clearLastElement()

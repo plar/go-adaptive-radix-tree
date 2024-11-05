@@ -44,8 +44,8 @@ func TestLeaf(t *testing.T) {
 	assert.False(t, leaf.leaf().match(Key("unknown-key")))
 
 	// we cannot shrink/grow leaf node
-	assert.Nil(t, leaf.shrink())
-	assert.Nil(t, leaf.grow())
+	assert.Nil(t, toNode(leaf).shrink())
+	assert.Nil(t, toNode(leaf).grow())
 }
 
 // Test matching behavior of leaf nodes.
@@ -95,20 +95,17 @@ func TestNodeMatchWithKey(t *testing.T) {
 }
 
 func TestCopyNode(t *testing.T) {
-	var zeroChildNode = &nodeRef{}
 
 	// Define test data
 	src := &node{
 		childrenLen: 3,
 		prefixLen:   5,
-		zeroChild:   zeroChildNode, // Assume someZeroChildNode is a valid nodeRef object
 		prefix:      [MaxPrefixLen]byte{'a', 'b', 'c', 'd', 'e'},
 	}
 
 	dst := &node{
 		childrenLen: 0,
 		prefixLen:   0,
-		zeroChild:   nil,
 		prefix:      [MaxPrefixLen]byte{},
 	}
 
@@ -118,7 +115,7 @@ func TestCopyNode(t *testing.T) {
 	// Use assertions to verify the outcomes
 	assert.Equal(t, dst.childrenLen, uint16(0), "childrenLen should not be copied")
 	assert.Equal(t, src.prefixLen, dst.prefixLen, "prefixLen should be copied correctly")
-	assert.Equal(t, src.zeroChild, dst.zeroChild, "zeroChild should be copied correctly")
+	// assert.Equal(t, src.zeroChild, dst.zeroChild, "zeroChild should be copied correctly")
 
 	maxCopyLen := min(int(src.prefixLen), MaxPrefixLen)
 	for i := 0; i < maxCopyLen; i++ {
@@ -156,8 +153,9 @@ func TestNodeAddChild(t *testing.T) {
 		for i := 0; i < maxChildren; i++ {
 			k := Key{byte(i)}
 			leaf := n.findChildByKey(k, 0)
-			assert.NotNil(t, *leaf)
-			assert.Equal(t, i, (*leaf).leaf().value.(int))
+			assert.NotNil(t, *leaf, "child should not be nil for key %d", i)
+			val := (*leaf).leaf().value.(int)
+			assert.Equal(t, i, val, "value should be %d", i)
 		}
 	}
 }
@@ -196,7 +194,7 @@ func TestNodeIndex(t *testing.T) {
 		}
 
 		for i := 0; i < maxChildren; i++ {
-			assert.Equal(t, i, n.index(byte(i)))
+			assert.Equal(t, i, toNode(n).index(byte(i)))
 		}
 	}
 }
@@ -290,7 +288,7 @@ func TestGrow(t *testing.T) {
 	}
 
 	for i, node := range nodes {
-		newNode := node.grow()
+		newNode := toNode(node).grow()
 		assert.Equal(t, expected[i], newNode.kind)
 	}
 }
@@ -332,7 +330,7 @@ func TestShrink(t *testing.T) {
 			}
 		}
 
-		newNode := node.shrink()
+		newNode := toNode(node).shrink()
 		assert.Equal(t, expected[i], newNode.kind)
 	}
 }

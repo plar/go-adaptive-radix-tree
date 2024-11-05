@@ -24,15 +24,15 @@ func (p *present48) clearAt(ch int) {
 
 type node48 struct {
 	node
-	children [node48Max]*nodeRef
+	children [node48Max + 1]*nodeRef // +1 is for the zero byte child
 	keys     [node256Max]byte
 	present  present48 // need 256 bits for keys
 }
 
 // minimum returns the minimum leaf node.
 func (n *node48) minimum() *leaf {
-	if n.zeroChild != nil {
-		return n.zeroChild.minimum()
+	if n.children[node48Max] != nil {
+		return n.children[node48Max].minimum()
 	}
 
 	idx := 0
@@ -61,7 +61,7 @@ func (n *node48) maximum() *leaf {
 func (n *node48) index(ch byte) int {
 	if n.hasChild(int(ch)) {
 		idx := int(n.keys[ch])
-		if idx < len(n.children) && n.children[idx] != nil {
+		if idx < node48Max && n.children[idx] != nil {
 			return idx
 		}
 	}
@@ -74,6 +74,10 @@ func (n *node48) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
+func (n *node48) zeroChild() **nodeRef {
+	return &n.children[node48Max]
+}
+
 // canAddChild returns true if the node has room for more children.
 func (n *node48) canAddChild() bool {
 	return n.childrenLen < node48Max
@@ -83,7 +87,9 @@ func (n *node48) canAddChild() bool {
 func (n *node48) grow() *nodeRef {
 	an256 := factory.newNode256()
 	n256 := an256.node256()
+
 	copyNode(&n256.node, &n.node)
+	n256.children[node256Max] = n.children[node48Max]
 
 	for i := 0; i < node256Max; i++ {
 		if n.hasChild(i) {
@@ -105,6 +111,7 @@ func (n *node48) shrink() *nodeRef {
 	n16 := an16.node16()
 
 	copyNode(&n16.node, &n.node)
+	n16.children[node16Max] = n.children[node48Max]
 
 	pos := 0
 	for i, idx := range n.keys {
@@ -132,7 +139,7 @@ func (n *node48) hasChild(idx int) bool {
 // addChild adds a new child to the node.
 func (n *node48) addChild(ch byte, valid bool, child *nodeRef) {
 	if !valid { // handle zero byte in the key
-		n.zeroChild = child
+		n.children[node48Max] = child
 		return
 	}
 
@@ -142,11 +149,11 @@ func (n *node48) addChild(ch byte, valid bool, child *nodeRef) {
 
 // find the insert position for the new child
 func (n *node48) findInsertPos() int {
-	var insertPos int
-	for insertPos < len(n.children) && n.children[insertPos] != nil {
-		insertPos++
+	var i int
+	for i < node48Max && n.children[i] != nil {
+		i++
 	}
-	return insertPos
+	return i
 }
 
 // insertChildAt inserts a child at the given position.
@@ -161,7 +168,7 @@ func (n *node48) insertChildAt(pos int, ch byte, child *nodeRef) {
 func (n *node48) deleteChild(ch byte, valid bool) int {
 	if !valid {
 		// clear the zero byte child reference
-		n.zeroChild = nil
+		n.children[node48Max] = nil
 	} else if idx := n.index(ch); idx >= 0 && n.children[idx] != nil {
 		// clear the child at the given index
 		n.children[idx] = nil

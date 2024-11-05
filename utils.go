@@ -12,14 +12,8 @@ func copyNode(dst *node, src *node) {
 	if dst == nil || src == nil {
 		return
 	}
-
 	dst.prefixLen = src.prefixLen
-	dst.zeroChild = src.zeroChild
-
-	maxCopyLen := min(int(src.prefixLen), MaxPrefixLen)
-	for i := 0; i < maxCopyLen; i++ {
-		dst.prefix[i] = src.prefix[i]
-	}
+	dst.prefix = src.prefix
 }
 
 // find the child node index by key
@@ -47,14 +41,20 @@ func findLongestCommonPrefix(key1 Key, key2 Key, keyOffset int) int {
 }
 
 // find the minimum leaf node
-func nodeMinimum(zeroChild *nodeRef, children []*nodeRef) *leaf {
-	if zeroChild != nil {
-		return zeroChild.minimum()
+func nodeMinimum(children []*nodeRef) *leaf {
+	numChildren := len(children)
+	if numChildren == 0 {
+		return nil
 	}
 
-	for _, child := range children {
-		if child != nil {
-			return child.minimum()
+	// zero byte key
+	if children[numChildren-1] != nil {
+		return children[numChildren-1].minimum()
+	}
+
+	for i := 0; i < numChildren-1; i++ {
+		if children[i] != nil {
+			return children[i].minimum()
 		}
 	}
 

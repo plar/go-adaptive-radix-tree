@@ -338,10 +338,10 @@ func (ts *treeStringer) baseNode(an *nodeRef, depth int, childNum int, childrenT
 			nn.prefix[:],
 			nn.keys[:],
 			nn.present[:],
-			nn.children[:],
+			nn.children[:node4Max],
 			nn.childrenLen,
 			depth,
-			nn.zeroChild)
+			nn.children[node4Max])
 
 	case Node16:
 		nn := an.node16()
@@ -360,10 +360,10 @@ func (ts *treeStringer) baseNode(an *nodeRef, depth int, childNum int, childrenT
 			nn.prefix[:],
 			nn.keys[:],
 			present,
-			nn.children[:],
+			nn.children[:node16Max],
 			nn.childrenLen,
 			depth,
-			nn.zeroChild)
+			nn.children[node16Max])
 
 	case Node48:
 		nn := an.node48()
@@ -382,10 +382,10 @@ func (ts *treeStringer) baseNode(an *nodeRef, depth int, childNum int, childrenT
 			nn.prefix[:],
 			nn.keys[:],
 			present,
-			nn.children[:],
+			nn.children[:node48Max],
 			nn.childrenLen,
 			depth,
-			nn.zeroChild)
+			nn.children[node48Max])
 
 	case Node256:
 		nn := an.node256()
@@ -395,10 +395,10 @@ func (ts *treeStringer) baseNode(an *nodeRef, depth int, childNum int, childrenT
 			nn.prefix[:],
 			nil,
 			nil,
-			nn.children[:],
+			nn.children[:node256Max],
 			nn.childrenLen,
 			depth,
-			nn.zeroChild)
+			nn.children[node256Max])
 
 	case Leaf:
 		n := an.leaf()
