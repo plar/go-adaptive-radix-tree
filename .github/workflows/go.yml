@@ -61,5 +61,5 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: coverage report
-        path: art.coverage.html
+        name: coverage report ${{ matrix.go }} ${{ matrix.os }}
+        path: art.coverage.${{ matrix.go }}.${{ matrix.os }}html
