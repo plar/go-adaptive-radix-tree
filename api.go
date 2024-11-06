@@ -2,7 +2,7 @@ package art
 
 import "errors"
 
-// A constant exposing all node types.
+// Node types.
 const (
 	Leaf    Kind = 0
 	Node4   Kind = 1
@@ -25,12 +25,17 @@ const (
 
 // These errors can be returned when iteration over the tree.
 var (
-	ErrConcurrentModification = errors.New("Concurrent modification has been detected")
-	ErrNoMoreNodes            = errors.New("There are no more nodes in the tree")
+	ErrConcurrentModification = errors.New("concurrent modification has been detected")
+	ErrNoMoreNodes            = errors.New("there are no more nodes in the tree")
 )
 
 // Kind is a node type.
 type Kind int
+
+// String returns string representation of the Kind value.
+func (k Kind) String() string {
+	return []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}[k]
+}
 
 // Key Type.
 // Key can be a set of any characters include unicode chars with null bytes.
@@ -100,19 +105,18 @@ type Tree interface {
 	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
 	// Pass TraverseXXX as an options to return an iterator for preorder traversal over all NodeXXX types.
 	Iterator(options ...int) Iterator
-	//IteratorPrefix(key Key) Iterator
 
 	// Minimum returns the minimum valued leaf, true if leaf is found and nil, false otherwise.
-	Minimum() (min Value, found bool)
+	Minimum() (Value, bool)
 
 	// Maximum returns the maximum valued leaf, true if leaf is found and nil, false otherwise.
-	Maximum() (max Value, found bool)
+	Maximum() (Value, bool)
 
 	// Returns size of the tree
 	Size() int
 }
 
-// New creates a new adaptive radix tree
+// New creates a new adaptive radix tree.
 func New() Tree {
 	return newTree()
 }

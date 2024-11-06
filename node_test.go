@@ -3,182 +3,190 @@ package art
 import (
 	"testing"
 
-	//"fmt"
-
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNodeKind(t *testing.T) {
-	n4 := factory.newNode4()
-	assert.NotNil(t, n4)
-	assert.Equal(t, Node4, n4.kind)
+// Test basic properties and behavior of each node kind.
+func TestNodeKindProperties(t *testing.T) {
+	t.Parallel()
 
-	n16 := factory.newNode16()
-	assert.NotNil(t, n16)
-	assert.Equal(t, Node16, n16.kind)
+	// Define a Table of Node Types to Test
+	nodeTests := []struct {
+		name string
+		node *nodeRef
+		kind Kind
+	}{
+		{"Node4 Test", factory.newNode4(), Node4},
+		{"Node16 Test", factory.newNode16(), Node16},
+		{"Node48 Test", factory.newNode48(), Node48},
+		{"Node256 Test", factory.newNode256(), Node256},
+	}
 
-	n48 := factory.newNode48()
-	assert.NotNil(t, n48)
-	assert.Equal(t, Node48, n48.kind)
+	// Run Node Kind Tests
+	for _, tt := range nodeTests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.NotNil(t, tt.node)
+			assert.Equal(t, tt.kind, tt.node.kind)
+		})
+	}
 
-	n256 := factory.newNode256()
-	assert.NotNil(t, n256)
-	assert.Equal(t, Node256, n256.kind)
+	// Test Leaf Node
+	t.Run("Leaf Node Test", func(t *testing.T) {
+		t.Parallel()
+
+		leaf := factory.newLeaf(Key("key"), "value")
+		assert.NotNil(t, leaf)
+		assert.Equal(t, Leaf, leaf.kind)
+		assert.Equal(t, "Leaf", leaf.kind.String())
+		assert.Equal(t, Key("key"), leaf.Key())
+
+		val, ok := leaf.Value().(string)
+		assert.True(t, ok)
+		assert.Equal(t, "value", val)
+	})
+}
+
+func TestUnknownNode(t *testing.T) {
+	t.Parallel()
+
+	unknownNode := &nodeRef{kind: Kind(0xFF)}
+	assert.Nil(t, unknownNode.maximum())
+	assert.Nil(t, unknownNode.minimum())
+}
+
+func TestLeafFunctionality(t *testing.T) {
+	t.Parallel()
 
 	leaf := factory.newLeaf([]byte("key"), "value")
 	assert.NotNil(t, leaf)
 	assert.Equal(t, Leaf, leaf.kind)
-	assert.Equal(t, leaf.Key(), Key([]byte("key")))
-	assert.Equal(t, leaf.Value().(string), "value")
 
-	assert.Equal(t, "Node4", n4.kind.String())
-	assert.Equal(t, "Node16", n16.kind.String())
-	assert.Equal(t, "Node48", n48.kind.String())
-	assert.Equal(t, "Node256", n256.kind.String())
-	assert.Equal(t, "Leaf", leaf.kind.String())
+	assert.False(t, leaf.leaf().match(Key("unknown-key")))
 
-	unknowNode := &artNode{kind: Kind(0xFF)}
-	assert.Nil(t, unknowNode.maximum())
-	assert.Nil(t, unknowNode.minimum())
+	// Ensure we cannot shrink/grow leaf node
+	assert.Nil(t, toNode(leaf).shrink())
+	assert.Nil(t, toNode(leaf).grow())
 }
 
-func TestLeaf(t *testing.T) {
-	leaf := factory.newLeaf([]byte("key"), "value")
-	assert.NotNil(t, leaf)
-	assert.Equal(t, Leaf, leaf.kind)
+// Test matching behavior of leaf nodes.
+func TestLeafMatchBehavior(t *testing.T) {
+	t.Parallel()
 
-	assert.False(t, leaf.leaf().match([]byte("unknown-key")))
+	leaf := factory.newLeaf(Key("key"), "value")
 
-	// we cannot shrink/grow leaf node
-	assert.Nil(t, leaf.shrink())
-	assert.Nil(t, leaf.grow())
-}
-
-func TestLeafMatch(t *testing.T) {
-	leaf := factory.newLeaf([]byte("key"), "value")
-	assert.False(t, leaf.leaf().match([]byte("unknown-key")))
+	assert.False(t, leaf.leaf().match(Key("unknown-key")))
 	assert.False(t, leaf.leaf().match(nil))
+	assert.True(t, leaf.leaf().match(Key("key")))
 
-	assert.True(t, leaf.leaf().match([]byte("key")))
-}
-
-func TestLeafPrefixMatch(t *testing.T) {
-	leaf := factory.newLeaf([]byte("key"), "value")
-	assert.False(t, leaf.leaf().prefixMatch([]byte("unknown-key")))
+	assert.False(t, leaf.leaf().prefixMatch(Key("unknown-key")))
 	assert.False(t, leaf.leaf().prefixMatch(nil))
-
-	assert.True(t, leaf.leaf().prefixMatch([]byte("ke")))
+	assert.True(t, leaf.leaf().prefixMatch(Key("ke")))
 }
 
-func TestNodeSetPrefix(t *testing.T) {
+// Check the setting of prefixes.
+func TestNodePrefixSetting(t *testing.T) {
+	t.Parallel()
+
 	n4 := factory.newNode4()
-	assert.NotNil(t, n4)
 	nn := n4.node()
 
 	key := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
 	n4.setPrefix(key, 2)
-
-	assert.Equal(t, uint32(2), nn.prefixLen)
+	assert.Equal(t, 2, int(nn.prefixLen))
 	assert.Equal(t, byte(1), nn.prefix[0])
 	assert.Equal(t, byte(2), nn.prefix[1])
 
-	n4.setPrefix(key, MaxPrefixLen)
-	assert.Equal(t, uint32(MaxPrefixLen), nn.prefixLen)
-	assert.Equal(t, byte(1), nn.prefix[0])
-	assert.Equal(t, byte(2), nn.prefix[1])
-	assert.Equal(t, byte(3), nn.prefix[2])
-	assert.Equal(t, byte(4), nn.prefix[3])
+	n4.setPrefix(key, maxPrefixLen)
+	assert.Equal(t, maxPrefixLen, int(nn.prefixLen))
+	assert.Equal(t, []byte{1, 2, 3, 4}, nn.prefix[:4])
 }
 
-func TestNodeMatchWithKey(t *testing.T) {
+// Test the matching of nodes with keys.
+func TestNodeMatchKeyBehavior(t *testing.T) {
+	t.Parallel()
+
 	key := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	n16 := factory.newNode16()
-
 	n16.setPrefix([]byte{1, 2, 3, 4, 5, 66, 77, 88, 99}, 5)
 
-	idx := n16.match(key, 0)
-	assert.Equal(t, uint32(5), idx)
-	idx = n16.match(key, 1)
-	assert.Equal(t, uint32(0), idx)
-	idx = n16.match(key, 100)
-	assert.Equal(t, uint32(0), idx)
+	assert.Equal(t, 5, n16.match(key, 0))
+	assert.Equal(t, 0, n16.match(key, 1))
+	assert.Equal(t, 0, n16.match(key, 100))
 }
 
-func TestNodeCopyMeta(t *testing.T) {
-	newNode := factory.newNode4()
-	node4 := newNode.node4()
-	node4.numChildren = 2
-	node4.prefixLen = 2
-	node4.prefix[0] = byte(10)
-	node4.prefix[1] = byte(20)
+func TestCopyNode(t *testing.T) {
+	t.Parallel()
 
-	assert.Equal(t, newNode, newNode.copyMeta(nil))
-
-	newNode2 := factory.newNode4()
-	node4 = newNode2.node4()
-	node4.numChildren = 4
-	node4.prefixLen = 3
-	node4.prefix[0] = byte(11)
-	node4.prefix[1] = byte(22)
-	node4.prefix[2] = byte(33)
-
-	assert.Equal(t, newNode, newNode.copyMeta(newNode2))
-	assert.Equal(t, uint32(3), newNode.node().prefixLen)
-	assert.Equal(t, uint16(4), newNode.node().numChildren)
-	assert.Equal(t, byte(11), newNode.node().prefix[0])
-	assert.Equal(t, byte(22), newNode.node().prefix[1])
-	assert.Equal(t, byte(33), newNode.node().prefix[2])
-}
-func TestLeafFindChild(t *testing.T) {
-	leaf := factory.newLeaf(Key("key"), "value")
-	res := leaf.findChild('k', true)
-	assert.Equal(t, &nodeNotFound, res)
-}
-
-func TestNodeAddChild(t *testing.T) {
-	nodes := []*artNode{
-		factory.newNode4(),
-		factory.newNode16(),
-		factory.newNode48(),
-		factory.newNode256(),
+	// Define test data
+	src := &node{
+		childrenLen: 3,
+		prefixLen:   5,
+		prefix:      [maxPrefixLen]byte{'a', 'b', 'c', 'd', 'e'},
 	}
 
-	for _, n := range nodes {
-		var maxChildren int = -1
-		switch n.kind {
-		case Node4:
-			maxChildren = node4Max
+	dst := &node{
+		childrenLen: 0,
+		prefixLen:   0,
+		prefix:      [maxPrefixLen]byte{},
+	}
 
-		case Node16:
-			maxChildren = node16Max
+	// Call the function being tested
+	copyNode(dst, src)
 
-		case Node48:
-			maxChildren = node48Max
+	// Use assertions to verify the outcomes
+	assert.Equal(t, uint16(0), dst.childrenLen, "childrenLen should not be copied")
+	assert.Equal(t, src.prefixLen, dst.prefixLen, "prefixLen should be copied correctly")
 
-		case Node256:
-			maxChildren = node256Max
-		}
-
-		for i := 0; i < maxChildren; i++ {
-			leaf := factory.newLeaf([]byte{byte(i)}, i)
-			n.addChild(byte(i), true, leaf)
-		}
-
-		for i := 0; i < maxChildren; i++ {
-			leaf := n.findChild(byte(i), true)
-			assert.NotNil(t, *leaf)
-			assert.Equal(t, i, (*leaf).leaf().value.(int))
-		}
+	maxCopyLen := minInt(int(src.prefixLen), maxPrefixLen)
+	for i := 0; i < maxCopyLen; i++ {
+		assert.Equal(t, src.prefix[i], dst.prefix[i], "prefix[%d] should be copied correctly", i)
 	}
 }
 
-func TestNodeAddChildForLeaf(t *testing.T) {
-	leaf := factory.newLeaf([]byte("key"), "value")
-	assert.False(t, leaf.addChild('c', true, nil))
+// Test adding children to nodes and retrieving them.
+func TestNodeAddChildAndFindChild(t *testing.T) {
+	t.Parallel()
+
+	nodeKinds := []struct {
+		name        string
+		node        *nodeRef
+		maxChildren int
+	}{
+		{"Node4", factory.newNode4(), node4Max},
+		{"Node16", factory.newNode16(), node16Max},
+		{"Node48", factory.newNode48(), node48Max},
+		{"Node256", factory.newNode256(), node256Max},
+	}
+
+	for _, n := range nodeKinds {
+		n := n
+		t.Run(n.name, func(t *testing.T) {
+			t.Parallel()
+
+			for i := 0; i < n.maxChildren; i++ {
+				leaf := factory.newLeaf(Key{byte(i)}, i)
+				n.node.addChild(keyChar{ch: byte(i)}, leaf)
+			}
+
+			for i := 0; i < n.maxChildren; i++ {
+				leaf := n.node.findChildByKey(Key{byte(i)}, 0)
+				assert.NotNil(t, *leaf, "child should not be nil for key %d", i)
+				val, ok := (*leaf).leaf().value.(int)
+				assert.True(t, ok, "value should be of type int")
+				assert.Equal(t, i, val, "value should be %d", i)
+			}
+		})
+	}
 }
 
+// Test indexing functionality across different nodes.
 func TestNodeIndex(t *testing.T) {
-	nodes := []*artNode{
+	t.Parallel()
+
+	nodes := []*nodeRef{
 		factory.newNode4(),
 		factory.newNode16(),
 		factory.newNode48(),
@@ -186,155 +194,180 @@ func TestNodeIndex(t *testing.T) {
 	}
 
 	for _, n := range nodes {
-		var maxChildren int
+		maxChildren := 0
+
 		switch n.kind {
 		case Node4:
 			maxChildren = node4Max
-
 		case Node16:
 			maxChildren = node16Max
-
 		case Node48:
 			maxChildren = node48Max
-
 		case Node256:
 			maxChildren = node256Max
-		}
-		for i := 0; i < maxChildren; i++ {
-			leaf := factory.newLeaf([]byte{byte(i)}, i)
-			n.addChild(byte(i), true, leaf)
+		case Leaf:
+			t.Fatal("Leaf node should not be tested here")
 		}
 
 		for i := 0; i < maxChildren; i++ {
-			assert.Equal(t, i, n.index(byte(i)))
+			leaf := factory.newLeaf(Key{byte(i)}, i)
+			n.addChild(keyChar{ch: byte(i)}, leaf)
+		}
+
+		for i := 0; i < maxChildren; i++ {
+			assert.Equal(t, i, toNode(n).index(keyChar{ch: byte(i)}))
 		}
 	}
 }
 
+// Test minimum and maximum functionality to ensure they return correct leaf nodes.
 func TestNodesMinimumMaximum(t *testing.T) {
-	// TODO: Merge nodes and inserts
-	nodes := []*artNode{
-		factory.newNode4(),
-		factory.newNode16(),
-		factory.newNode48(),
-		factory.newNode256(),
+	t.Parallel()
+
+	nodes := []struct {
+		node  *nodeRef
+		count int
+	}{
+		{factory.newNode4(), 3},
+		{factory.newNode16(), 15},
+		{factory.newNode48(), 47},
+		{factory.newNode256(), 255},
 	}
 
-	inserts := []int{3, 15, 47, 255}
+	for _, n := range nodes {
+		n := n
+		t.Run(n.node.kind.String(), func(t *testing.T) {
+			t.Parallel()
 
-	for i, node := range nodes {
-		for j := 1; j <= inserts[i]; j++ {
-			node.addChild(byte(j), true, factory.newLeaf([]byte{byte(j)}, byte(j)))
-		}
+			for j := 1; j <= n.count; j++ {
+				kc := keyChar{ch: byte(j)}
+				leaf := factory.newLeaf([]byte{byte(j)}, byte(j))
+				n.node.addChild(kc, leaf)
+			}
 
-		minLeaf := node.minimum()
-		assert.Equal(t, minLeaf.key, Key{1})
-		assert.Equal(t, minLeaf.value.(byte), minLeaf.value.(byte))
+			minLeaf := n.node.minimum()
+			assert.Equal(t, Key{1}, minLeaf.key)
 
-		maxLeaf := node.maximum()
-		assert.Equal(t, maxLeaf.key, Key{byte(inserts[i])})
-		assert.Equal(t, maxLeaf.value.(byte), maxLeaf.value.(byte))
+			maxLeaf := n.node.maximum()
+			assert.Equal(t, Key{byte(n.count)}, maxLeaf.key)
+		})
 	}
 }
 
+// Test adding and finding children in a Node4.
 func TestNode4AddChildAndFindChild(t *testing.T) {
+	t.Parallel()
+
 	parent := factory.newNode4()
 	child := factory.newNode4()
-	parent.addChild(1, true, child)
+	k := Key{1}
+	parent.addChild(keyChar{ch: k[0]}, child)
 
-	assert.Equal(t, uint16(1), parent.node().numChildren)
-	assert.Equal(t, child, *parent.findChild(1, true))
+	assert.Equal(t, 1, int(parent.node().childrenLen))
+	assert.Equal(t, child, *parent.findChildByKey(k, 0))
 }
 
+// Test that Node4 maintains sorted order when adding children.
 func TestNode4AddChildTwicePreserveSorted(t *testing.T) {
+	t.Parallel()
+
 	parent := factory.newNode4()
 	child1 := factory.newNode4()
 	child2 := factory.newNode4()
-	parent.addChild(2, true, child1)
-	parent.addChild(1, true, child2)
 
-	assert.Equal(t, uint16(2), parent.node().numChildren)
+	parent.addChild(keyChar{ch: 2}, child1)
+	parent.addChild(keyChar{ch: 1}, child2)
+
+	assert.Equal(t, 2, int(parent.node().childrenLen))
 	assert.Equal(t, byte(1), parent.node4().keys[0])
 	assert.Equal(t, byte(2), parent.node4().keys[1])
 }
 
+// Test Node4 maintains sorted order with multiple children.
 func TestNode4AddChild4PreserveSorted(t *testing.T) {
+	t.Parallel()
+
 	parent := factory.newNode4()
 	for i := 4; i > 0; i-- {
-		parent.addChild(byte(i), true, factory.newNode4())
+		parent.addChild(keyChar{ch: byte(i)}, factory.newNode4())
 	}
 
-	assert.Equal(t, uint16(4), parent.node().numChildren)
-	assert.Equal(t, []byte{
-		byte(1),
-		byte(2),
-		byte(3),
-		byte(4),
-	}, parent.node4().keys[:])
+	assert.Equal(t, 4, int(parent.node().childrenLen))
+	assert.Equal(t, []byte{1, 2, 3, 4}, parent.node4().keys[:])
 }
 
+// Test Node16 maintains sorted order with multiple children.
 func TestNode16AddChild16PreserveSorted(t *testing.T) {
+	t.Parallel()
+
 	parent := factory.newNode16()
 	for i := 16; i > 0; i-- {
-		parent.addChild(byte(i), true, factory.newNode16())
+		parent.addChild(keyChar{ch: byte(i)}, factory.newNode16())
 	}
 
-	assert.Equal(t, uint16(16), parent.node().numChildren)
+	assert.Equal(t, 16, int(parent.node().childrenLen))
+
 	for i := 0; i < 16; i++ {
 		assert.Equal(t, byte(i+1), parent.node16().keys[i])
 	}
 }
 
-func TestGrow(t *testing.T) {
-	nodes := []*artNode{factory.newNode4(), factory.newNode16(), factory.newNode48()}
-	expected := []Kind{Node16, Node48, Node256}
+// Test growing a node.
+func TestNodeGrow(t *testing.T) {
+	t.Parallel()
 
-	for i, node := range nodes {
-		newNode := node.grow()
-		assert.Equal(t, expected[i], newNode.kind)
+	nodeKinds := []struct {
+		name     string
+		node     *nodeRef
+		expected Kind
+	}{
+		{"Node4", factory.newNode4(), Node16},
+		{"Node16", factory.newNode16(), Node48},
+		{"Node48", factory.newNode48(), Node256},
+	}
+
+	for _, tt := range nodeKinds {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			newNode := toNode(tt.node).grow()
+			assert.Equal(t, tt.expected, newNode.kind)
+		})
 	}
 }
 
-func TestShrink(t *testing.T) {
-	nodes := []*artNode{
-		factory.newNode256(),
-		factory.newNode48(),
-		factory.newNode16(),
-		factory.newNode4(),
+// Test shrinking a node.
+func TestNodeShrink(t *testing.T) {
+	t.Parallel()
+
+	nodeKinds := []struct {
+		name        string
+		node        *nodeRef
+		expected    Kind
+		minChildren int
+	}{
+		{"Node256", factory.newNode256(), Node48, node256Min},
+		{"Node48", factory.newNode48(), Node16, node48Min},
+		{"Node16", factory.newNode16(), Node4, node16Min},
+		{"Node4", factory.newNode4(), Leaf, node4Min},
 	}
 
-	expected := []Kind{
-		Node48,
-		Node16,
-		Node4,
-		Leaf,
-	}
+	for _, tt := range nodeKinds {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	for i, node := range nodes {
-		var minChildren int
-		switch node.kind {
-		case Node4:
-			minChildren = node4Min
-
-		case Node16:
-			minChildren = node16Min
-
-		case Node48:
-			minChildren = node48Min
-
-		case Node256:
-			minChildren = node256Min
-		}
-
-		for j := 0; j < minChildren; j++ {
-			if node.kind != Node4 {
-				node.addChild(byte(i), true, factory.newNode4())
-			} else {
-				node.addChild(byte(i), true, factory.newLeaf(Key{byte(i)}, "value"))
+			for j := 0; j < tt.minChildren; j++ {
+				if tt.node.kind != Node4 {
+					tt.node.addChild(keyChar{ch: byte(j)}, factory.newNode4())
+				} else {
+					tt.node.addChild(keyChar{ch: byte(j)}, factory.newLeaf(Key{byte(j)}, "value"))
+				}
 			}
-		}
 
-		newNode := node.shrink()
-		assert.Equal(t, expected[i], newNode.kind)
+			newNode := toNode(tt.node).shrink()
+			assert.Equal(t, tt.expected, newNode.kind)
+		})
 	}
 }
