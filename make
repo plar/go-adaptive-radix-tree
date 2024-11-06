@@ -44,7 +44,7 @@ qa_mod() {
 ## qa/fmt: run gofmt to test if all files are formatted
 qa_fmt() {
     echo "✔️ Running gofmt..."
-    test -z "$(gofmt -l ./...)"
+    test -z "$(gofmt -l .)"
 }
 
 ## qa/vet: run go vet

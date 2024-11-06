@@ -29,13 +29,21 @@ jobs:
         check-latest: true
         cache: true
 
-    # - name: Go Environment
-    #   run: |
-    #     go version
-    #     go env
+    - name: "Run go mod"
+      run: ./make qa/mod
 
-    - name: "Run QA: mod, fmt, vet, lint, staticcheck, vulncheck, goses..."
-      run: ./make qa
+    - name: "Run go fmt"
+      run: ./make qa/fmt
+    - name: "Run go vet"
+      run: ./make qa/vet
+    - name: "Run go lint"
+      run: ./make qa/lint
+    - name: "Run go staticcheck"
+      run: ./make qa/staticcheck
+    - name: "Run go vulncheck"
+      run: ./make qa/vulncheck
+    - name: "Run go gosec"
+      run: ./make qa/gosec
 
-    - name: "Run Tests..."
+    - name: "Run tests"
       run: ./make qa/test
