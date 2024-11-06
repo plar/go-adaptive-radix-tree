@@ -28,22 +28,38 @@ jobs:
         go-version: ${{ matrix.go }}
         check-latest: true
         cache: true
+    
+    - name: Install dependencies
+      run: go get .
 
     - name: "Run go mod"
       run: ./make qa/mod
 
     - name: "Run go fmt"
       run: ./make qa/fmt
+
     - name: "Run go vet"
       run: ./make qa/vet
+
     - name: "Run go lint"
       run: ./make qa/lint
+
     - name: "Run go staticcheck"
       run: ./make qa/staticcheck
+
     - name: "Run go vulncheck"
       run: ./make qa/vulncheck
+
     - name: "Run go gosec"
       run: ./make qa/gosec
 
     - name: "Run tests"
-      run: ./make qa/test
+      run: ./make qa/test/cover
+
+    - name: "Run go benchmark"
+      run: ./make qa/benchmark
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: coverage report
+        path: art.coverage.html

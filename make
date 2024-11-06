@@ -99,7 +99,7 @@ qa_test_update() {
 ## qa/benchmarks: run all benchmarks
 qa_benchmarks() {
     echo "✔️ Running go test with benchmarks..."
-    go test -benchmem -bench=. -run=^a
+    go test -benchmem -bench=.
 }
 
 ##############################################################################
