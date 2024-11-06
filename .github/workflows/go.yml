@@ -34,32 +34,8 @@ jobs:
     #     go version
     #     go env
 
-    - name: Get dependencies
-      run: go get -v -t -d ./...
+    - name: "Run QA: mod, fmt, vet, lint, staticcheck, vulncheck, goses..."
+      run: ./make qa
 
-    - name: Run Fmt
-      run: go fmt ./...
-          
-    - name: Run Vet
-      run: |
-        go vet -stdmethods=false $(go list ./...)
-        go mod tidy
-        if ! test -z "$(git status --porcelain)"; then
-          echo "Please run 'go mod tidy'"
-          exit 1
-        fi
-
-    - name: Run Lint
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: latest
-        only-new-issues: true
-        skip-pkg-cache: true
-
-    - name: Run Staticcheck
-      run: |
-        go install honnef.co/go/tools/cmd/staticcheck@latest
-        staticcheck ./...
-          
-    - name: Run Test
-      run: go test -race -coverpkg=./... -coverprofile=coverage.txt ./...
+    - name: "Run Tests..."
+      run: ./make qa/test

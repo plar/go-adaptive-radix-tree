@@ -26,12 +26,12 @@ confirm() {
 ## qa: run all quality control checks
 qa() {
     qa_mod
-    qa_test
     qa_fmt
     qa_vet
+    qa_lint
     qa_staticcheck
     qa_vulncheck
-    qa_lint
+    qa_gosec
 }
 
 ## qa/mod: run go mod tidy and go mod verify
@@ -65,16 +65,22 @@ qa_vulncheck() {
     go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 }
 
-## qa/test: run all tests
-qa_test() {
-    echo "✔️ Running go test..."
-    go test -race -buildvcs .
+## qa/gosec: run gosec
+qa_gosec() {
+    echo "✔️ Running gosec..."
+    go run github.com/securego/gosec/v2/cmd/gosec@latest ./...
 }
 
 ## qa/lint: run golangci-lint
 qa_lint() {
     echo "✔️ Running golangci-lint..."
     go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 run
+}
+
+## qa/test: run all tests
+qa_test() {
+    echo "✔️ Running go test..."
+    go test -race -buildvcs .
 }
 
 ## qa/test/cover: run all tests and create a coverage report
