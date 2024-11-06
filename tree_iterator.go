@@ -120,7 +120,7 @@ func (it *iterator) next() {
 	for {
 		ctx, ok := it.state.current()
 		if !ok {
-			it.nextNode = nil
+			it.nextNode = nil // no more nodes to iterate
 
 			return
 		}
@@ -128,9 +128,7 @@ func (it *iterator) next() {
 		nextNode, hasMore := ctx.next()
 		if nextNode != nil && hasMore {
 			it.nextNode = nextNode
-			if !nextNode.isLeaf() {
-				it.state.push(newIteratorContext(nextNode))
-			}
+			it.state.push(newIteratorContext(nextNode))
 
 			return
 		}
