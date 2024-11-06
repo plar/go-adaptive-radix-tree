@@ -86,6 +86,10 @@ func (n *node48) childZero() **nodeRef {
 	return &n.children[node48Max]
 }
 
+func (n *node48) allChildren() []*nodeRef {
+	return n.children[:]
+}
+
 // hasCapacityForChild returns true if the node has room for more children.
 func (n *node48) hasCapacityForChild() bool {
 	return n.childrenLen < node48Max
@@ -97,11 +101,11 @@ func (n *node48) grow() *nodeRef {
 	n256 := an256.node256()
 
 	copyNode(&n256.node, &n.node)
-	n256.children[node256Max] = n.children[node48Max]
+	n256.children[node256Max] = n.children[node48Max] // copy zero byte child
 
 	for i := 0; i < node256Max; i++ {
 		if n.hasChild(i) {
-			n256.addChild(keyChar{ch: byte(i)}, n.children[n.keys[i]]) //nolint:exhaustruct
+			n256.addChild(keyChar{ch: byte(i)}, n.children[n.keys[i]])
 		}
 	}
 

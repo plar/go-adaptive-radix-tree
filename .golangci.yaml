@@ -1,0 +1,40 @@
+linters:
+  enable-all: true
+
+  disable:
+    - testpackage
+    - ireturn
+    - varnamelen
+    - gofumpt
+    - exhaustruct
+
+issues:  
+  exclude-files:  
+    - tree_dump*
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/google # all google packages
+      test:
+        files:
+          - "$test"
+        allow:
+          - $gostd
+          - github.com/stretchr
+  exhaustruct:
+    exclude:
+      - ".*_test.go"
+
+output:
+  sort-results: true
+  sort-order:
+    - file # filepath, line, and column.
+    - severity
+    - linter

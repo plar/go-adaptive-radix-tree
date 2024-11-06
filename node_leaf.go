@@ -2,7 +2,7 @@ package art
 
 import "bytes"
 
-// Leaf node with a variable key length.
+// Leaf node stores the key-value pair.
 type leaf struct {
 	key   Key
 	value interface{}

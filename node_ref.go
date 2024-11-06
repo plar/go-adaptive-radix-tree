@@ -13,10 +13,10 @@ const indexNotFound = -1
 // for different internal tree operations.
 var nodeNotFound *nodeRef //nolint:gochecknoglobals
 
-// nodeRef stores all available nodes, leaf and node type.
+// nodeRef stores all available tree nodes leaf and nodeX types
+// as a ref to *unsafe* pointer.
+// The kind field is used to determine the type of the node.
 type nodeRef struct {
-	// ref is a pointer to one of the node types:
-	// leaf, node4, node16, node48, node256.
 	ref  unsafe.Pointer
 	kind Kind
 }
@@ -39,9 +39,10 @@ type nodeOperations interface {
 	deleteChild(kc keyChar) int
 }
 
-type nodeChildGetter interface {
+type nodeChildren interface {
 	childAt(idx int) **nodeRef
 	childZero() **nodeRef
+	allChildren() []*nodeRef
 }
 
 type nodeKeyIndexer interface {
@@ -50,25 +51,32 @@ type nodeKeyIndexer interface {
 
 // noder is an interface that defines methods that
 // must be implemented by nodeRef and all node types.
+// extra interfaces are used to group methods by their purpose
+// and help with code readability.
 type noder interface {
 	nodeLeafer
 	nodeOperations
-	nodeChildGetter
+	nodeChildren
 	nodeKeyIndexer
 	nodeSizeManager
 }
 
 // toNode converts the nodeRef to specific node type.
-func toNode(an *nodeRef) noder {
-	switch an.kind { //nolint:exhaustive
+// the idea is to avoid type assertion in the code in multiple places.
+func toNode(nr *nodeRef) noder {
+	if nr == nil {
+		return noopNoder
+	}
+
+	switch nr.kind { //nolint:exhaustive
 	case Node4:
-		return an.node4()
+		return nr.node4()
 	case Node16:
-		return an.node16()
+		return nr.node16()
 	case Node48:
-		return an.node48()
+		return nr.node48()
 	case Node256:
-		return an.node256()
+		return nr.node256()
 	default:
 		return noopNoder
 	}
@@ -82,6 +90,7 @@ func (*noop) maximum() *leaf             { return nil }
 func (*noop) index(keyChar) int          { return indexNotFound }
 func (*noop) childAt(int) **nodeRef      { return &nodeNotFound }
 func (*noop) childZero() **nodeRef       { return &nodeNotFound }
+func (*noop) allChildren() []*nodeRef    { return nil }
 func (*noop) hasCapacityForChild() bool  { return true }
 func (*noop) grow() *nodeRef             { return nil }
 func (*noop) isReadyToShrink() bool      { return false }
@@ -92,7 +101,7 @@ func (*noop) deleteChild(keyChar) int    { return 0 }
 // noopNoder is the default Noder implementation.
 var noopNoder noder = &noop{} //nolint:gochecknoglobals
 
-// assert that all node types implement artNoder interface.
+// assert that all node types implement noder interface.
 var _ noder = (*node4)(nil)
 var _ noder = (*node16)(nil)
 var _ noder = (*node48)(nil)
@@ -106,7 +115,8 @@ func (nr *nodeRef) Kind() Kind {
 	return nr.kind
 }
 
-// Key returns the node key.
+// Key returns the node key for leaf nodes.
+// for nodeX types, it returns nil.
 func (nr *nodeRef) Key() Key {
 	if nr.isLeaf() {
 		return nr.leaf().key
@@ -115,7 +125,8 @@ func (nr *nodeRef) Key() Key {
 	return nil
 }
 
-// Value returns the node value.
+// Value returns the node value for leaf nodes.
+// for nodeX types, it returns nil.
 func (nr *nodeRef) Value() Value {
 	if nr.isLeaf() {
 		return nr.leaf().value
@@ -133,13 +144,14 @@ func (nr *nodeRef) isLeaf() bool {
 func (nr *nodeRef) setPrefix(newPrefix []byte, prefixLen int) {
 	n := nr.node()
 
-	n.prefixLen = uint16(prefixLen) //nolint:gosec
-	for i := 0; i < min(prefixLen, MaxPrefixLen); i++ {
+	n.prefixLen = uint16(prefixLen) //#nosec:G115
+	for i := 0; i < minInt(prefixLen, maxPrefixLen); i++ {
 		n.prefix[i] = newPrefix[i]
 	}
 }
 
-// minimum returns the minimum leaf node under the current node.
+// minimum returns itself if the node is a leaf node.
+// otherwise it returns the minimum leaf node under the current node.
 func (nr *nodeRef) minimum() *leaf {
 	if nr.kind == Leaf {
 		return nr.leaf()
@@ -148,7 +160,8 @@ func (nr *nodeRef) minimum() *leaf {
 	return toNode(nr).minimum()
 }
 
-// maximum returns the maximum leaf node under the current node.
+// maximum returns itself if the node is a leaf node.
+// otherwise it returns the maximum leaf node under the current node.
 func (nr *nodeRef) maximum() *leaf {
 	if nr.kind == Leaf {
 		return nr.leaf()
@@ -165,6 +178,7 @@ func (nr *nodeRef) findChildByKey(key Key, keyOffset int) **nodeRef {
 	return n.childAt(idx)
 }
 
+// nodeX/leaf casts the nodeRef to the specific nodeX/leaf type.
 func (nr *nodeRef) node() *node       { return (*node)(nr.ref) }    // node casts nodeRef to node.
 func (nr *nodeRef) node4() *node4     { return (*node4)(nr.ref) }   // node4 casts nodeRef to node4.
 func (nr *nodeRef) node16() *node16   { return (*node16)(nr.ref) }  // node16 casts nodeRef to node16.
@@ -180,14 +194,14 @@ func (nr *nodeRef) addChild(kc keyChar, child *nodeRef) {
 	if n.hasCapacityForChild() {
 		n.addChild(kc, child)
 	} else {
-		biggerNode := n.grow()         // grow to the next node type
-		biggerNode.addChild(kc, child) // recursively add the child to the new node
-		replaceNode(nr, biggerNode)    // replace the current node with the new node
+		bigNode := n.grow()         // grow to the next node type
+		bigNode.addChild(kc, child) // recursively add the child to the new node
+		replaceNode(nr, bigNode)    // replace the current node with the new node
 	}
 }
 
 // deleteChild deletes the child node from the current node.
-// If the node can shrink, it shrinks to the previous node type.
+// If the node can shrink after, it shrinks to the previous node type.
 func (nr *nodeRef) deleteChild(kc keyChar) bool {
 	shrank := false
 	n := toNode(nr)
@@ -195,8 +209,8 @@ func (nr *nodeRef) deleteChild(kc keyChar) bool {
 
 	if n.isReadyToShrink() {
 		shrank = true
-		shrankNode := n.shrink()
-		replaceNode(nr, shrankNode)
+		smallNode := n.shrink()    // shrink to the previous node type
+		replaceNode(nr, smallNode) // replace the current node with the shrank node
 	}
 
 	return shrank
@@ -216,8 +230,8 @@ func (nr *nodeRef) match(key Key, keyOffset int) int /* 1st mismatch index*/ {
 	n := nr.node()
 
 	// the maximum length we can check against the node's prefix
-	maxPrefixLen := min(int(n.prefixLen), MaxPrefixLen)
-	limit := min(maxPrefixLen, keyRemaining)
+	maxPrefixLen := minInt(int(n.prefixLen), maxPrefixLen)
+	limit := minInt(maxPrefixLen, keyRemaining)
 
 	// compare the key against the node's prefix
 	for i := 0; i < limit; i++ {
@@ -234,12 +248,12 @@ func (nr *nodeRef) match(key Key, keyOffset int) int /* 1st mismatch index*/ {
 // It returns the mismatch index or matches up to the key's end.
 func (nr *nodeRef) matchDeep(key Key, keyOffset int) int /* mismatch index*/ {
 	mismatchIdx := nr.match(key, keyOffset)
-	if mismatchIdx < MaxPrefixLen {
+	if mismatchIdx < maxPrefixLen {
 		return mismatchIdx
 	}
 
 	leafKey := nr.minimum().key
-	limit := min(len(leafKey), len(key)) - keyOffset
+	limit := minInt(len(leafKey), len(key)) - keyOffset
 
 	for ; mismatchIdx < limit; mismatchIdx++ {
 		if leafKey[keyOffset+mismatchIdx] != key[keyOffset+mismatchIdx] {

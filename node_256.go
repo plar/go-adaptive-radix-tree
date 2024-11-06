@@ -38,6 +38,10 @@ func (n *node256) childZero() **nodeRef {
 	return &n.children[node256Max]
 }
 
+func (n *node256) allChildren() []*nodeRef {
+	return n.children[:]
+}
+
 // addChild adds a new child to the node.
 func (n *node256) addChild(kc keyChar, child *nodeRef) {
 	if kc.invalid {
@@ -55,8 +59,8 @@ func (n *node256) hasCapacityForChild() bool {
 	return true
 }
 
-// grow is implemeneted to satisfy the noder interface
-// but it does not do anything for node256.
+// grow for node256 always returns nil,
+// because node256 has the maximum capacity.
 func (n *node256) grow() *nodeRef {
 	return nil
 }
@@ -72,7 +76,7 @@ func (n *node256) shrink() *nodeRef {
 	n48 := an48.node48()
 
 	copyNode(&n48.node, &n.node)
-	n48.children[node48Min] = n.children[node256Max]
+	n48.children[node48Min] = n.children[node256Max] // copy zero byte child
 
 	for numChildren, i := 0, 0; i < node256Max; i++ {
 		if n.children[i] == nil {

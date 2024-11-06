@@ -32,6 +32,8 @@ func (ds *testDataset) build(_ *testing.T, tree *tree) {
 }
 
 func (ds *testDataset) process(t *testing.T, tree *tree) {
+	t.Helper()
+
 	switch deleteData := ds.deleteItems.(type) {
 	case []string:
 		ds.processAsStrings(t, tree, deleteData)
@@ -43,18 +45,24 @@ func (ds *testDataset) process(t *testing.T, tree *tree) {
 }
 
 func (ds *testDataset) processAsStrings(t *testing.T, tree *tree, stringData []string) {
+	t.Helper()
+
 	for _, strVal := range stringData {
 		ds.processSingleItem(t, tree, Key(strVal), strVal)
 	}
 }
 
 func (ds *testDataset) processAsBytes(t *testing.T, tree *tree, bytesData []byte) {
+	t.Helper()
+
 	for _, byteVal := range bytesData {
 		ds.processSingleItem(t, tree, Key{byteVal}, []byte{byteVal})
 	}
 }
 
 func (ds *testDataset) processSingleItem(t *testing.T, tree *tree, key Key, expectedVal interface{}) {
+	t.Helper()
+
 	val, deleted := tree.Delete(key)
 	assert.Equal(t, ds.deleteStatus, deleted, ds.name)
 
@@ -67,6 +75,7 @@ func (ds *testDataset) processSingleItem(t *testing.T, tree *tree, key Key, expe
 }
 
 func (ds *testDataset) assert(t *testing.T, tree *tree) {
+	t.Helper()
 	assert.Equal(t, ds.expectedSize, tree.size, ds.name)
 
 	switch root := ds.expectedRoot.(type) {
@@ -120,14 +129,16 @@ func collectStats(it Iterator) treeStats {
 
 // loadTestFile loads the test file from the given path.
 func loadTestFile(path string) [][]byte {
+	var words [][]byte
+
 	file, err := os.Open(path)
 	if err != nil {
 		panic("Couldn't open " + path)
 	}
 	defer file.Close()
 
-	var words [][]byte
 	reader := bufio.NewReader(file)
+
 	for {
 		if line, err := reader.ReadBytes(byte('\n')); err != nil {
 			break
@@ -135,15 +146,18 @@ func loadTestFile(path string) [][]byte {
 			words = append(words, line[:len(line)-1])
 		}
 	}
+
 	return words
 }
 
-// Helper function to load data into a tree from a file
+// treeWithData creates a tree with the data from the given file.
 func treeWithData(filePath string) (*tree, [][]byte) {
 	tree := newTree()
+
 	data := loadTestFile(filePath)
 	for _, item := range data {
 		tree.Insert(item, item)
 	}
+
 	return tree, data
 }

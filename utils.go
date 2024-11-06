@@ -1,23 +1,24 @@
 package art
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
-	} else {
-		return b
 	}
+
+	return b
 }
 
-// copy the node from src to dst
+// copy the node from src to dst.
 func copyNode(dst *node, src *node) {
 	if dst == nil || src == nil {
 		return
 	}
+
 	dst.prefixLen = src.prefixLen
 	dst.prefix = src.prefix
 }
 
-// find the child node index by key
+// find the child node index by key.
 func findIndex(keys []byte, ch byte) int {
 	for i, key := range keys {
 		if key == ch {
@@ -28,9 +29,9 @@ func findIndex(keys []byte, ch byte) int {
 	return indexNotFound
 }
 
-// findLongestCommonPrefix returns the longest common prefix of key1 and key2
+// findLongestCommonPrefix returns the longest common prefix of key1 and key2.
 func findLongestCommonPrefix(key1 Key, key2 Key, keyOffset int) int {
-	limit := min(len(key1), len(key2))
+	limit := minInt(len(key1), len(key2))
 
 	idx := keyOffset
 	for ; idx < limit; idx++ {
@@ -42,7 +43,7 @@ func findLongestCommonPrefix(key1 Key, key2 Key, keyOffset int) int {
 	return idx - keyOffset
 }
 
-// find the minimum leaf node
+// nodeMinimum returns the minimum leaf node.
 func nodeMinimum(children []*nodeRef) *leaf {
 	numChildren := len(children)
 	if numChildren == 0 {
@@ -63,7 +64,7 @@ func nodeMinimum(children []*nodeRef) *leaf {
 	return nil
 }
 
-// find the maximum leaf node
+// nodeMaximum returns the maximum leaf node.
 func nodeMaximum(children []*nodeRef) *leaf {
 	for i := len(children) - 1; i >= 0; i-- {
 		if children[i] != nil {

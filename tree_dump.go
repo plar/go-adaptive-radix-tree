@@ -22,6 +22,7 @@ func RefFullFormatter(a *dumpNodeRef) string {
 	if a.ptr == nil {
 		return "-"
 	}
+
 	return fmt.Sprintf("#%d/%p", a.id, a.ptr)
 }
 
@@ -34,7 +35,7 @@ func RefShortFormatter(a *dumpNodeRef) string {
 	return fmt.Sprintf("#%d", a.id)
 }
 
-// RefAddrFormatter returns only the pointer address of the node. (legacy)
+// RefAddrFormatter returns only the pointer address of the node (legacy).
 func RefAddrFormatter(a *dumpNodeRef) string {
 	if a.ptr == nil {
 		return "-"
@@ -64,6 +65,7 @@ func (a dumpNodeRef) String() string {
 	if a.fmt == nil {
 		return RefFullFormatter(&a)
 	}
+
 	return a.fmt(&a)
 }
 
@@ -115,12 +117,14 @@ func (ts *treeStringer) String() string {
 	// trim trailing whitespace and newlines.
 	s = strings.TrimRight(s, "\n")
 	s = strings.TrimRight(s, " ")
+
 	return s
 }
 
 // regNode registers a nodeRef and returns its reference.
 func (ts *treeStringer) regNode(node *nodeRef) dumpNodeRef {
 	addr := ts.nodeRegistry.register(node)
+
 	return addr
 }
 
@@ -130,7 +134,7 @@ func (ts *treeStringer) regNodes(nodes []*nodeRef) []dumpNodeRef {
 		return nil
 	}
 
-	var addrs []dumpNodeRef
+	addrs := make([]dumpNodeRef, 0, len(nodes))
 	for _, n := range nodes {
 		addrs = append(addrs, ts.nodeRegistry.register(n))
 	}

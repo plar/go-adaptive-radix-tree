@@ -40,6 +40,10 @@ func (n *node4) childZero() **nodeRef {
 	return &n.children[node4Max]
 }
 
+func (n *node4) allChildren() []*nodeRef {
+	return n.children[:]
+}
+
 // hasCapacityForChild returns true if the node has room for more children.
 func (n *node4) hasCapacityForChild() bool {
 	return n.childrenLen < node4Max
@@ -51,7 +55,7 @@ func (n *node4) grow() *nodeRef {
 	n16 := an16.node16()
 
 	copyNode(&n16.node, &n.node)
-	n16.children[node16Max] = n.children[node4Max]
+	n16.children[node16Max] = n.children[node4Max] // copy zero byte child
 
 	for i := 0; i < int(n.childrenLen); i++ {
 		// skip if the key is not present
@@ -107,20 +111,20 @@ func (n *node4) adjustPrefix(childNode *node) {
 
 	// at this point, the node has only one child
 	// copy the key part of the current node as prefix
-	if nodePrefLen < MaxPrefixLen {
+	if nodePrefLen < maxPrefixLen {
 		n.prefix[nodePrefLen] = n.keys[0]
 		nodePrefLen++
 	}
 
 	// copy the part of child prefix that fits into the current node
-	if nodePrefLen < MaxPrefixLen {
-		childPrefLen := min(int(childNode.prefixLen), MaxPrefixLen-nodePrefLen)
+	if nodePrefLen < maxPrefixLen {
+		childPrefLen := minInt(int(childNode.prefixLen), maxPrefixLen-nodePrefLen)
 		copy(n.prefix[nodePrefLen:], childNode.prefix[:childPrefLen])
 		nodePrefLen += childPrefLen
 	}
 
 	// copy the part of the current node prefix that fits into the child node
-	prefixLen := min(nodePrefLen, MaxPrefixLen)
+	prefixLen := minInt(nodePrefLen, maxPrefixLen)
 	copy(childNode.prefix[:], n.prefix[:prefixLen])
 	childNode.prefixLen += n.prefixLen + 1
 }

@@ -6,10 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Benchmarks
+// Benchmarks for the tree implementation.
 func BenchmarkWordsTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/words.txt")
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		tree := New()
 		for _, w := range words {
@@ -19,12 +21,15 @@ func BenchmarkWordsTreeInsert(b *testing.B) {
 }
 
 func BenchmarkWordsTreeSearch(b *testing.B) {
-	words := loadTestFile("test/assets/words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		for _, w := range words {
 			tree.Search(w)
@@ -33,8 +38,9 @@ func BenchmarkWordsTreeSearch(b *testing.B) {
 }
 
 func BenchmarkWordsTreeIterator(b *testing.B) {
-	words := loadTestFile("test/assets/words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
@@ -46,11 +52,13 @@ func BenchmarkWordsTreeIterator(b *testing.B) {
 }
 
 func BenchmarkWordsTreeForEach(b *testing.B) {
-	words := loadTestFile("test/assets/words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := treeStats{}
@@ -68,7 +76,9 @@ func BenchmarkWordsTreeForEach(b *testing.B) {
 
 func BenchmarkUUIDsTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/uuid.txt")
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		tree := New()
 		for _, w := range words {
@@ -78,12 +88,15 @@ func BenchmarkUUIDsTreeInsert(b *testing.B) {
 }
 
 func BenchmarkUUIDsTreeSearch(b *testing.B) {
-	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/uuid.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		for _, w := range words {
 			tree.Search(w)
@@ -92,11 +105,13 @@ func BenchmarkUUIDsTreeSearch(b *testing.B) {
 }
 
 func BenchmarkUUIDsTreeIterator(b *testing.B) {
-	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/uuid.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))
@@ -104,11 +119,13 @@ func BenchmarkUUIDsTreeIterator(b *testing.B) {
 }
 
 func BenchmarkUUIDsTreeForEach(b *testing.B) {
-	words := loadTestFile("test/assets/uuid.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/uuid.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))
@@ -117,7 +134,9 @@ func BenchmarkUUIDsTreeForEach(b *testing.B) {
 
 func BenchmarkHSKTreeInsert(b *testing.B) {
 	words := loadTestFile("test/assets/hsk_words.txt")
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		tree := New()
 		for _, w := range words {
@@ -127,12 +146,15 @@ func BenchmarkHSKTreeInsert(b *testing.B) {
 }
 
 func BenchmarkHSKTreeSearch(b *testing.B) {
-	words := loadTestFile("test/assets/hsk_words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/hsk_words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
+
 	for n := 0; n < b.N; n++ {
 		for _, w := range words {
 			tree.Search(w)
@@ -141,11 +163,13 @@ func BenchmarkHSKTreeSearch(b *testing.B) {
 }
 
 func BenchmarkHSKTreeIterator(b *testing.B) {
-	words := loadTestFile("test/assets/hsk_words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/hsk_words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))
@@ -153,11 +177,13 @@ func BenchmarkHSKTreeIterator(b *testing.B) {
 }
 
 func BenchmarkHSKTreeForEach(b *testing.B) {
-	words := loadTestFile("test/assets/hsk_words.txt")
 	tree := New()
+
+	words := loadTestFile("test/assets/hsk_words.txt")
 	for _, w := range words {
 		tree.Insert(w, w)
 	}
+
 	b.ResetTimer()
 
 	stats := collectStats(tree.Iterator(TraverseAll))

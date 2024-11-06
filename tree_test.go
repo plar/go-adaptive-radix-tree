@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLongestCommonPrefix(t *testing.T) {
@@ -42,7 +44,10 @@ func TestLongestCommonPrefix(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			l1 := factory.newLeaf(tt.l1, string(tt.l1)).leaf()
 			l2 := factory.newLeaf(tt.l2, string(tt.l2)).leaf()
 			actual := findLongestCommonPrefix(l1.key, l2.key, tt.offset)
@@ -70,7 +75,7 @@ func TestObjFactory(t *testing.T) {
 	assert.NotEqual(t, node48A, node48B)
 }
 
-func TestTreeInsertAndUpdate(t *testing.T) {
+func TestTreeInsertAndUpdate(t *testing.T) { //nolint:tparallel
 	t.Parallel()
 
 	tree := newTree()
@@ -99,7 +104,7 @@ func TestTreeInsertAndUpdate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
 			oldValue, updated := tree.Insert(tt.insertKey, tt.insertValue)
 			assert.Equal(t, tt.expectedOld, oldValue)
@@ -156,11 +161,15 @@ func TestTreeInsertAndNodeGrowth(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("%d nodes", tc.totalNodes), func(t *testing.T) {
+			t.Parallel()
+
 			tree := newTree()
 			for i := byte(0); i < tc.totalNodes; i++ {
 				tree.Insert(Key{i}, i)
 			}
+
 			assert.Equal(t, int(tc.totalNodes), tree.Size())
 			assert.Equal(t, tc.expected, tree.root.kind)
 		})
@@ -191,7 +200,9 @@ func TestTreeUUIDsInserMinMax(t *testing.T) {
 	assert.Equal(t, []byte("ffffcb46-a92e-4822-82af-a7190f9c1ec5"), maximum.value)
 }
 
-func TestTreeInsertAndDeleteOperations(t *testing.T) {
+func TestTreeInsertAndDeleteOperations(t *testing.T) { //nolint:funlen,cyclop
+	t.Parallel()
+
 	var tests = []*testDataset{
 		{
 			name:         "Insert 1 Delete 1",
@@ -258,7 +269,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		},
 		{
 			name: "Insert 49 Delete 0",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -269,7 +280,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 			deleteStatus: false},
 		{
 			name: "Insert 49 Delete 1",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -281,7 +292,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		},
 		{
 			name: "Insert 49 Delete 49",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -300,7 +311,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		},
 		{
 			name: "Insert 49 Delete 49",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := byte(0); i < 49; i++ {
 					tree.Insert(Key{i}, []byte{i})
 				}
@@ -319,7 +330,7 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		},
 		{
 			name: "Insert 256 Delete 1",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
 					term := bytes.NewBuffer([]byte{})
 					term.WriteByte(byte(i))
@@ -333,15 +344,15 @@ func TestTreeInsertAndDeleteOperations(t *testing.T) {
 		},
 		{
 			name: "Insert 256 Delete 256",
-			insertItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
+			insertItems: testDatasetBuilder(func(_ *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
-					term := fmt.Sprintf("%d", i)
+					term := strconv.Itoa(i)
 					tree.Insert(Key(term), term)
 				}
 			}),
 			deleteItems: testDatasetBuilder(func(data *testDataset, tree *tree) {
 				for i := 0; i < 256; i++ {
-					term := fmt.Sprintf("%d", i)
+					term := strconv.Itoa(i)
 					val, deleted := tree.Delete(Key(term))
 					assert.Equal(t, data.deleteStatus, deleted)
 					assert.Equal(t, term, val)
@@ -453,8 +464,10 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	tree.Insert(Key("2"), 2)
 
 	traversal := []Node{}
+
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
+
 		return true
 	}, TraverseAll)
 
@@ -464,19 +477,19 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	assert.Nil(t, traversal[0].Key())
 	assert.Nil(t, traversal[0].Value())
 
-	assert.Equal(t, traversal[1].Key(), Key("1"))
-	assert.Equal(t, traversal[1].Value(), 1)
+	assert.Equal(t, Key("1"), traversal[1].Key())
+	assert.Equal(t, 1, traversal[1].Value())
 	assert.Equal(t, Leaf, traversal[1].Kind())
 
-	assert.Equal(t, traversal[2].Key(), Key("2"))
-	assert.Equal(t, traversal[2].Value(), 2)
+	assert.Equal(t, Key("2"), traversal[2].Key())
+	assert.Equal(t, 2, traversal[2].Value())
 	assert.Equal(t, Leaf, traversal[2].Kind())
 
 	tree.ForEach(func(node Node) bool {
 		assert.Equal(t, Node4, node.Kind())
+
 		return true
 	}, TraverseNode)
-
 }
 
 func TestTreeTraversalNode48(t *testing.T) {
@@ -488,8 +501,10 @@ func TestTreeTraversalNode48(t *testing.T) {
 	}
 
 	traversal := []Node{}
+
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, node)
+
 		return true
 	}, TraverseAll)
 
@@ -511,11 +526,14 @@ func TestTreeTraversalCancelEarly(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		tree.Insert(Key{byte(i)}, i)
 	}
+
 	assert.Equal(t, 10, tree.Size())
 
 	count := 0
-	tree.ForEach(func(node Node) bool {
+
+	tree.ForEach(func(Node) bool {
 		count++
+
 		return count < 5
 	}, TraverseAll)
 
@@ -531,7 +549,7 @@ func TestTreeTraversalWordsStats(t *testing.T) {
 	assert.Equal(t, treeStats{235886, 113419, 10433, 403, 1}, stats)
 }
 
-func TestTreeTraversalPrefix(t *testing.T) {
+func TestTreeTraversalPrefix(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	dataSet := []struct {
@@ -605,7 +623,7 @@ func TestTreeTraversalPrefix(t *testing.T) {
 
 	for _, tt := range dataSet {
 		tt := tt
-		t.Run(fmt.Sprintf("Prefix-%s", tt.prefix), func(t *testing.T) {
+		t.Run("Prefix-"+tt.prefix, func(t *testing.T) {
 			t.Parallel()
 
 			tree := newTree()
@@ -614,10 +632,12 @@ func TestTreeTraversalPrefix(t *testing.T) {
 			}
 
 			actual := []string{}
+
 			tree.ForEachPrefix(Key(tt.prefix), func(node Node) bool {
 				if node.Kind() == Leaf {
 					actual = append(actual, string(node.Key()))
 				}
+
 				return true
 			})
 
@@ -637,10 +657,12 @@ func TestTreeTraversalForEachPrefixWithSimilarKey(t *testing.T) {
 	tree.Insert(Key("abc2"), "2")
 
 	totalKeys := 0
+
 	tree.ForEachPrefix(Key("abc"), func(node Node) bool {
 		if node.Kind() == Leaf {
 			totalKeys++
 		}
+
 		return true
 	})
 
@@ -656,23 +678,29 @@ func TestTreeTraversalForEachPrefixConditionalCallback(t *testing.T) {
 	tree.Insert(Key("America#California#LosAngeles"), 3)
 
 	count := 0
+
 	tree.ForEachPrefix(Key("America#"), func(node Node) bool {
 		if node.Kind() == Leaf {
 			count++
 		}
+
 		return true
 	})
 	assert.Equal(t, 3, count)
 
 	count = 0
+
 	tree.ForEachPrefix(Key("America#"), func(node Node) bool {
 		if node.Kind() == Leaf {
 			count++
+
 			if string(node.Key()) == "America#California#Irvine" {
 				return false
 			}
+
 			count++ // should not be called
 		}
+
 		return true
 	})
 	assert.Equal(t, 1, count)
@@ -681,15 +709,16 @@ func TestTreeTraversalForEachPrefixConditionalCallback(t *testing.T) {
 func TestEarlyPrefixTraversalStop(t *testing.T) {
 	t.Parallel()
 
+	totalCalls := 0
+
 	tree := New()
 	tree.Insert(Key("0"), "0")
 	tree.Insert(Key("1"), "1")
 	tree.Insert(Key("11"), "11")
 	tree.Insert(Key("111"), "111")
-
-	totalCalls := 0
-	tree.ForEachPrefix(Key("11"), func(node Node) bool {
+	tree.ForEachPrefix(Key("11"), func(Node) bool {
 		totalCalls++
+
 		return false
 	})
 	assert.Equal(t, 1, totalCalls)
@@ -698,6 +727,8 @@ func TestEarlyPrefixTraversalStop(t *testing.T) {
 func TestTreeTraversalForEachPrefixCallbackStop(t *testing.T) {
 	t.Parallel()
 
+	totalCalls := 0
+
 	tree := New()
 	tree.Insert(Key("0"), "0")
 	tree.Insert(Key("1"), "1")
@@ -705,24 +736,27 @@ func TestTreeTraversalForEachPrefixCallbackStop(t *testing.T) {
 	tree.Insert(Key("111"), "111")
 	tree.Insert(Key("1111"), "1111")
 	tree.Insert(Key("11111"), "11111")
-
-	totalCalls := 0
-	tree.ForEachPrefix(Key("0"), func(node Node) (cont bool) {
+	tree.ForEachPrefix(Key("0"), func(Node) /*cont*/ bool {
 		totalCalls++
+
 		return false
 	})
 	assert.Equal(t, 1, totalCalls)
 
 	totalCalls = 0
-	tree.ForEachPrefix(Key("11"), func(node Node) (cont bool) {
+
+	tree.ForEachPrefix(Key("11"), func(Node) /*cont*/ bool {
 		totalCalls++
+
 		return false
 	})
 	assert.Equal(t, 1, totalCalls)
 
 	totalCalls = 0
-	tree.ForEachPrefix(Key("nokey"), func(node Node) (cont bool) {
+
+	tree.ForEachPrefix(Key("nokey"), func(Node) /*cont*/ bool {
 		totalCalls++ // should be never called
+
 		return false
 	})
 	assert.Equal(t, 0, totalCalls)
@@ -732,11 +766,16 @@ func TestPrefixTraversalWords(t *testing.T) {
 	t.Parallel()
 
 	var found []string
+
 	tree, _ := treeWithData("test/assets/words.txt")
 	tree.ForEachPrefix(Key("antisa"), func(node Node) bool {
 		if node.Kind() == Leaf {
-			found = append(found, string(node.Value().([]byte)))
+			val, ok := node.Value().([]byte)
+			assert.True(t, ok)
+
+			found = append(found, string(val))
 		}
+
 		return true
 	})
 
@@ -762,18 +801,18 @@ func TestTreeIterator(t *testing.T) {
 	assert.True(t, it.HasNext())
 
 	n4, err := it.Next()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, Node4, n4.Kind())
 
 	assert.True(t, it.HasNext())
 	v1, err := it.Next()
-	assert.NoError(t, err)
-	assert.Equal(t, v1.Value(), []byte{1})
+	require.NoError(t, err)
+	assert.Equal(t, []byte{1}, v1.Value())
 
 	assert.True(t, it.HasNext())
 	v2, err := it.Next()
-	assert.NoError(t, err)
-	assert.Equal(t, v2.Value(), []byte{2})
+	require.NoError(t, err)
+	assert.Equal(t, []byte{2}, v2.Value())
 
 	assert.False(t, it.HasNext())
 	bad, err := it.Next()
@@ -794,6 +833,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 
 	// simulate concurrent modification
 	tree.Insert(Key("3"), []byte{3})
+
 	bad, err := it1.Next()
 	assert.Nil(t, bad)
 	assert.Equal(t, ErrConcurrentModification, err)
@@ -803,6 +843,7 @@ func TestTreeIteratorConcurrentModification(t *testing.T) {
 	assert.True(t, it2.HasNext())
 
 	tree.Delete([]byte("3"))
+
 	bad, err = it2.Next()
 	assert.Nil(t, bad)
 	assert.Equal(t, ErrConcurrentModification, err)
@@ -874,8 +915,9 @@ func TestTreeInsertSearchDeleteHSKWords(t *testing.T) {
 func TestTreeInsertSearchDeleteUUIDs(t *testing.T) {
 	t.Parallel()
 
-	uuids := loadTestFile("test/assets/uuid.txt")
 	tree := newTree()
+
+	uuids := loadTestFile("test/assets/uuid.txt")
 	for _, w := range uuids {
 		tree.Insert(w, w)
 	}
@@ -928,7 +970,7 @@ func TestInsertDeleteWithZeroChild(t *testing.T) {
 	assert.Nil(t, tree.root)
 }
 
-func TestTreeAPI(t *testing.T) {
+func TestTreeAPI(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	// test empty tree
@@ -956,11 +998,12 @@ func TestTreeAPI(t *testing.T) {
 	assert.NotNil(t, it)
 	assert.False(t, it.HasNext())
 	_, err := it.Next()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, ErrNoMoreNodes, err)
 
-	tree.ForEach(func(node Node) bool {
+	tree.ForEach(func(Node) bool {
 		t.Fatalf("Should not be called on an empty tree")
+
 		return true
 	})
 
@@ -987,6 +1030,7 @@ func TestTreeAPI(t *testing.T) {
 	tree.ForEach(func(node Node) bool {
 		assert.Equal(t, Key("Hi, I'm Key"), node.Key())
 		assert.Equal(t, "Ha-ha, Again? Go away!", node.Value())
+
 		return true
 	})
 
@@ -995,14 +1039,14 @@ func TestTreeAPI(t *testing.T) {
 	assert.True(t, it.HasNext())
 
 	next, err := it.Next()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, value)
 	assert.Equal(t, "Ha-ha, Again? Go away!", next.Value())
 
 	assert.False(t, it.HasNext())
 	next, err = it.Next()
 	assert.Nil(t, next)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	oldValue, updated = tree.Insert(Key("Hi, I'm Value"), "Surprise!")
 	assert.Nil(t, oldValue)
@@ -1022,7 +1066,6 @@ func TestTreeAPI(t *testing.T) {
 	assert.True(t, found)
 }
 
-// new tests
 func TestTreeDumpAppend(t *testing.T) {
 	t.Parallel()
 
@@ -1053,19 +1096,22 @@ func TestTreeInsertAndSearchKeyWithNull(t *testing.T) {
 
 	expected := []string{"ab", "ab\x00", "ac", "ad"}
 	traversal := []string{}
+
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, string(node.Key()))
+
 		return true
 	}, TraverseLeaf)
-
 	assert.Equal(t, expected, traversal)
 
 	traversal = []string{}
+
 	it := tree.Iterator(TraverseLeaf)
 	for it.HasNext() {
 		leaf, _ := it.Next()
 		traversal = append(traversal, string(leaf.Key()))
 	}
+
 	assert.Equal(t, expected, traversal)
 }
 
@@ -1073,6 +1119,7 @@ func TestNodesWithNullKeys4(t *testing.T) {
 	t.Parallel()
 
 	tree := newTree()
+
 	terms := []string{"aa", "aa\x00", "aac", "aab\x00"}
 	for _, term := range terms {
 		tree.Insert(Key(term), term)
@@ -1085,7 +1132,7 @@ func TestNodesWithNullKeys4(t *testing.T) {
 	}
 }
 
-func TestNodesWithNullKeys16(t *testing.T) {
+func TestNodesWithNullKeys16(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tree := newTree()
@@ -1142,15 +1189,16 @@ func TestNodesWithNullKeys16(t *testing.T) {
 		"aaz\x00",
 	}
 	traversal := []string{}
+
 	tree.ForEach(func(node Node) bool {
 		traversal = append(traversal, string(node.Key()))
+
 		return true
 	}, TraverseLeaf)
 	assert.Equal(t, expected, traversal)
-
 }
 
-func TestNodesWithNullKeys48(t *testing.T) {
+func TestNodesWithNullKeys48(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tree := newTree()
@@ -1192,10 +1240,13 @@ func TestNodesWithNullKeys48(t *testing.T) {
 	// traverse include term with null prefix
 	termsCopy := make([]string, len(terms))
 	copy(termsCopy, terms)
+
 	traversal := []string{}
+
 	tree.ForEach(func(node Node) bool {
 		s, _ := node.Value().(string)
 		traversal = append(traversal, s)
+
 		return true
 	}, TraverseLeaf)
 	sort.Strings(termsCopy) // traversal should be in sorted order
@@ -1212,13 +1263,13 @@ func TestNodesWithNullKeys48(t *testing.T) {
 	assert.Nil(t, tree.root)
 }
 
-func TestNodesWithNullKeys256(t *testing.T) {
+func TestNodesWithNullKeys256(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tree := newTree()
+	terms := []string{"b"}
 
 	// build list of terms which will use node256
-	terms := []string{"b"}
 	for i0 := 0; i0 <= 260; i0++ {
 		var term string
 		if i0 < 130 {
@@ -1226,6 +1277,7 @@ func TestNodesWithNullKeys256(t *testing.T) {
 		} else {
 			term = string([]byte{'b', byte(i0)})
 		}
+
 		terms = append(terms, term)
 	}
 
@@ -1252,12 +1304,14 @@ func TestNodesWithNullKeys256(t *testing.T) {
 
 	// traverse include term with null prefix
 	termsCopy := make([]string, len(terms))
-	copy(termsCopy, terms[:])
-	termsCopy = append(termsCopy, term)
+	copy(termsCopy, terms)
+	termsCopy = append(termsCopy, term) //nolint:makezero
 	traversal := []string{}
+
 	tree.ForEach(func(node Node) bool {
 		s, _ := node.Value().(string)
 		traversal = append(traversal, s)
+
 		return true
 	}, TraverseLeaf)
 	sort.Strings(termsCopy)
@@ -1306,6 +1360,7 @@ func TestTreeInsertNilKeyTwice(t *testing.T) {
 	old, updated := tree.Insert(kk, kv)
 	assert.Nil(t, old)
 	assert.False(t, updated)
+
 	v, found := tree.Search(kk)
 	assert.Equal(t, kv, v)
 	assert.True(t, found)

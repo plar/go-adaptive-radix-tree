@@ -44,7 +44,7 @@ func newObjFactory() nodeFactory {
 func (f *objFactory) newNode4() *nodeRef {
 	return &nodeRef{
 		kind: Node4,
-		ref:  unsafe.Pointer(new(node4)),
+		ref:  unsafe.Pointer(new(node4)), //#nosec:G103
 	}
 }
 
@@ -52,7 +52,7 @@ func (f *objFactory) newNode4() *nodeRef {
 func (f *objFactory) newNode16() *nodeRef {
 	return &nodeRef{
 		kind: Node16,
-		ref:  unsafe.Pointer(new(node16)),
+		ref:  unsafe.Pointer(new(node16)), //#nosec:G103
 	}
 }
 
@@ -60,7 +60,7 @@ func (f *objFactory) newNode16() *nodeRef {
 func (f *objFactory) newNode48() *nodeRef {
 	return &nodeRef{
 		kind: Node48,
-		ref:  unsafe.Pointer(new(node48)),
+		ref:  unsafe.Pointer(new(node48)), //#nosec:G103
 	}
 }
 
@@ -68,7 +68,7 @@ func (f *objFactory) newNode48() *nodeRef {
 func (f *objFactory) newNode256() *nodeRef {
 	return &nodeRef{
 		kind: Node256,
-		ref:  unsafe.Pointer(new(node256)),
+		ref:  unsafe.Pointer(new(node256)), //#nosec:G103
 	}
 }
 
@@ -80,7 +80,7 @@ func (f *objFactory) newLeaf(key Key, value interface{}) *nodeRef {
 
 	return &nodeRef{
 		kind: Leaf,
-		ref: unsafe.Pointer(&leaf{
+		ref: unsafe.Pointer(&leaf{ //#nosec:G103
 			key:   keyClone,
 			value: value,
 		}),

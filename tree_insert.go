@@ -1,7 +1,7 @@
 package art
 
 // insertRecursively inserts a new key-value pair into the tree.
-// nrp means Node Reference Pointer
+// nrp means Node Reference Pointer.
 func (tr *tree) insertRecursively(nrp **nodeRef, key Key, value Value, keyOffset int) (Value, treeOpResult) {
 	nr := *nrp
 	if nr == nil {
@@ -17,6 +17,7 @@ func (tr *tree) insertRecursively(nrp **nodeRef, key Key, value Value, keyOffset
 
 func (tr *tree) insertNewLeaf(nrp **nodeRef, key Key, value Value) (Value, treeOpResult) {
 	replaceRef(nrp, factory.newLeaf(key, value))
+
 	return nil, treeOpInserted
 }
 
@@ -26,6 +27,7 @@ func (tr *tree) handleLeafInsertion(nrp **nodeRef, key Key, value Value, keyOffs
 	if leaf := nr.leaf(); leaf.match(key) {
 		oldValue := leaf.value
 		leaf.value = value
+
 		return oldValue, treeOpUpdated
 	}
 
@@ -54,19 +56,23 @@ func (tr *tree) splitLeaf(nrpCurLeaf **nodeRef, key Key, value Value, keyOffset 
 
 	// replace the old leaf with the new node4
 	replaceRef(nrpCurLeaf, nr4)
+
 	return nil, treeOpInserted
 }
 
 func (tr *tree) handleNodeInsertion(nrp **nodeRef, key Key, value Value, keyOffset int) (Value, treeOpResult) {
 	nr := *nrp
+
 	n := nr.node()
 	if n.prefixLen > 0 {
 		prefixMismatchIdx := nr.matchDeep(key, keyOffset)
 		if prefixMismatchIdx < int(n.prefixLen) {
 			return tr.splitNode(nrp, key, value, keyOffset, prefixMismatchIdx)
 		}
+
 		keyOffset += int(n.prefixLen)
 	}
+
 	return tr.continueInsertion(nrp, key, value, keyOffset)
 }
 
@@ -80,12 +86,13 @@ func (tr *tree) splitNode(nrp **nodeRef, key Key, value Value, keyOffset int, mi
 	tr.reassignPrefix(nr4, nr, key, value, keyOffset, mismatchIdx)
 
 	replaceRef(nrp, nr4)
+
 	return nil, treeOpInserted
 }
 
 func (tr *tree) reassignPrefix(newNRP *nodeRef, curNRP *nodeRef, key Key, value Value, keyOffset int, mismatchIdx int) {
 	curNode := curNRP.node()
-	curNode.prefixLen -= uint16(mismatchIdx + 1)
+	curNode.prefixLen -= uint16(mismatchIdx + 1) //#nosec:G115
 
 	idx := keyOffset + mismatchIdx
 
@@ -93,7 +100,7 @@ func (tr *tree) reassignPrefix(newNRP *nodeRef, curNRP *nodeRef, key Key, value 
 	leaf := curNRP.minimum()
 	newNRP.addChild(leaf.key.charAt(idx), curNRP)
 
-	for i := 0; i < min(int(curNode.prefixLen), MaxPrefixLen); i++ {
+	for i := 0; i < minInt(int(curNode.prefixLen), maxPrefixLen); i++ {
 		curNode.prefix[i] = leaf.key[keyOffset+mismatchIdx+i+1]
 	}
 
@@ -103,6 +110,7 @@ func (tr *tree) reassignPrefix(newNRP *nodeRef, curNRP *nodeRef, key Key, value 
 
 func (tr *tree) continueInsertion(nrp **nodeRef, key Key, value Value, keyOffset int) (Value, treeOpResult) {
 	nr := *nrp
+
 	nextNRP := nr.findChildByKey(key, keyOffset)
 	if *nextNRP != nil {
 		// Found a partial match, continue inserting
@@ -110,6 +118,7 @@ func (tr *tree) continueInsertion(nrp **nodeRef, key Key, value Value, keyOffset
 	}
 
 	// No child found, create a new leaf node
-	nr.addChild(key.charAt(int(keyOffset)), factory.newLeaf(key, value))
+	nr.addChild(key.charAt(keyOffset), factory.newLeaf(key, value))
+
 	return nil, treeOpInserted
 }

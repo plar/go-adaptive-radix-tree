@@ -18,8 +18,10 @@ func (tr *tree) deleteRecursively(nrp **nodeRef, key Key, keyOffset int) (Value,
 func (tr *tree) handleLeafDeletion(nrp **nodeRef, key Key) (Value, treeOpResult) {
 	if leaf := (*nrp).leaf(); leaf.match(key) {
 		replaceRef(nrp, nil)
+
 		return leaf.value, treeOpDeleted
 	}
+
 	return nil, treeOpNoChange
 }
 
@@ -28,9 +30,10 @@ func (tr *tree) handleInternalNodeDeletion(nr *nodeRef, key Key, keyOffset int) 
 	n := nr.node()
 
 	if n.prefixLen > 0 {
-		if mismatchIdx := nr.match(key, keyOffset); mismatchIdx != min(int(n.prefixLen), MaxPrefixLen) {
+		if mismatchIdx := nr.match(key, keyOffset); mismatchIdx != minInt(int(n.prefixLen), maxPrefixLen) {
 			return nil, treeOpNoChange
 		}
+
 		keyOffset += int(n.prefixLen)
 	}
 
@@ -54,5 +57,6 @@ func (tr *tree) handleDeletionInChild(curNR, nextNR *nodeRef, key Key, keyOffset
 	}
 
 	curNR.deleteChild(key.charAt(keyOffset))
+
 	return leaf.value, treeOpDeleted
 }

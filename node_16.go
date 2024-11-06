@@ -66,6 +66,10 @@ func (n *node16) childZero() **nodeRef {
 	return &n.children[node16Max]
 }
 
+func (n *node16) allChildren() []*nodeRef {
+	return n.children[:]
+}
+
 // hasCapacityForChild returns true if the node has room for more children.
 func (n *node16) hasCapacityForChild() bool {
 	return n.childrenLen < node16Max
@@ -77,7 +81,7 @@ func (n *node16) grow() *nodeRef {
 	n48 := an48.node48()
 
 	copyNode(&n48.node, &n.node)
-	n48.children[node48Max] = n.children[node16Max]
+	n48.children[node48Max] = n.children[node16Max] // copy zero byte child
 
 	for numChildren, i := 0, 0; i < int(n.childrenLen); i++ {
 		if !n.hasChild(i) {

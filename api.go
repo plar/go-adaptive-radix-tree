@@ -32,6 +32,11 @@ var (
 // Kind is a node type.
 type Kind int
 
+// String returns string representation of the Kind value.
+func (k Kind) String() string {
+	return []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}[k]
+}
+
 // Key Type.
 // Key can be a set of any characters include unicode chars with null bytes.
 type Key []byte
