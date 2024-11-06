@@ -148,9 +148,7 @@ git_release() {
     confirm "Releasing a new version." || exit 1
     qa
     assert_clean_repo
-    # GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o="/tmp/bin/linux_amd64/${binary_name}" "$main_package_path"
-    # upx -5 "/tmp/bin/linux_amd64/${binary_name}"
-    # # Include additional deployment steps here...
+    # Include additional deployment steps here...
 }
 
 help() {
