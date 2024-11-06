@@ -56,10 +56,13 @@ jobs:
     - name: "Run tests"
       run: ./make qa/test/cover
 
-    - name: "Run go benchmarks"
-      run: ./make qa/benchmarks
+    - name: "Rename coverage report to art.coverage.${{ matrix.go }}.${{ matrix.os }}.html..."
+      run: mv ./art.coverage.html art.coverage.${{ matrix.go }}.${{ matrix.os }}.html
 
     - uses: actions/upload-artifact@v4
       with:
         name: coverage report ${{ matrix.go }} ${{ matrix.os }}
-        path: art.coverage.${{ matrix.go }}.${{ matrix.os }}html
+        path: art.coverage.${{ matrix.go }}.${{ matrix.os }}.html
+
+    - name: "Run go benchmarks"
+      run: ./make qa/benchmarks
