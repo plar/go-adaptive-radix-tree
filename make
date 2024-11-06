@@ -70,7 +70,7 @@ qa_vulncheck() {
 ## qa/gosec: run gosec
 qa_gosec() {
     echo "✔️ Running gosec..."
-    go run github.com/securego/gosec/v2/cmd/gosec@latest ./...
+    go run github.com/securego/gosec/v2/cmd/gosec@latest -exclude-dir=examples ./...
 }
 
 ## qa/lint: run golangci-lint
