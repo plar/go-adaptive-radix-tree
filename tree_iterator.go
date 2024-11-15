@@ -126,7 +126,7 @@ func (it *iterator) next() {
 		}
 
 		nextNode, hasMore := ctx.next()
-		if nextNode != nil && hasMore {
+		if hasMore {
 			it.nextNode = nextNode
 			it.state.push(newIteratorContext(nextNode))
 

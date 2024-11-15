@@ -172,8 +172,10 @@ func (n *node48) findInsertPos(kc keyChar) int {
 // insertChildAt inserts a child at the given position.
 func (n *node48) insertChildAt(pos int, ch byte, child *nodeRef) {
 	if pos == node48Max {
+		// insert the child at the zero byte child reference
 		n.children[node48Max] = child
 	} else {
+		// insert the child at the given index
 		n.keys[ch] = byte(pos)
 		n.present.setAt(int(ch))
 		n.children[pos] = child
@@ -188,10 +190,9 @@ func (n *node48) deleteChild(kc keyChar) int {
 		n.children[node48Max] = nil
 	} else if idx := n.index(kc); idx >= 0 && n.children[idx] != nil {
 		// clear the child at the given index
-		n.children[idx] = nil
 		n.keys[kc.ch] = 0
 		n.present.clearAt(int(kc.ch))
-
+		n.children[idx] = nil
 		n.childrenLen--
 	}
 
