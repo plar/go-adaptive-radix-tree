@@ -152,6 +152,12 @@ func (tr *tree) ForEach(callback Callback, opts ...int) {
 	tr.forEachRecursively(tr.root, traverseFilter(options, callback))
 }
 
+// ForEachDesc iterates over all keys of the tree in a descending order and calls the callback function.
+func (tr *tree) ForEachDesc(callback Callback, opts ...int) {
+	options := traverseOptions(opts...)
+	tr.forEachDescRecursively(tr.root, traverseFilter(options, callback))
+}
+
 // ForEachPrefix iterates over all keys with the given prefix.
 func (tr *tree) ForEachPrefix(key Key, callback Callback) {
 	tr.forEachPrefix(key, callback)

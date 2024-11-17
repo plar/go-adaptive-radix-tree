@@ -492,6 +492,44 @@ func TestTreeTraversalPreordered(t *testing.T) {
 	}, TraverseNode)
 }
 
+func TestTreeTraversalPreorderedDesc(t *testing.T) {
+	t.Parallel()
+
+	tree := newTree()
+	tree.Insert(Key("1"), 1)
+	tree.Insert(Key("2"), 2)
+
+	traversal := []Node{}
+
+	tree.ForEachDesc(func(node Node) bool {
+		traversal = append(traversal, node)
+
+		return true
+	}, TraverseAll)
+	t.Log(traversal[0].Key(), traversal[1].Key(), traversal[2].Key())
+
+	assert.Equal(t, 2, tree.size)
+
+	assert.Equal(t, Key("2"), traversal[0].Key())
+	assert.Equal(t, 2, traversal[0].Value())
+	assert.Equal(t, Leaf, traversal[0].Kind())
+
+	assert.Equal(t, Key("1"), traversal[1].Key())
+	assert.Equal(t, 1, traversal[1].Value())
+	assert.Equal(t, Leaf, traversal[1].Kind())
+
+	assert.Equal(t, Node4, traversal[2].Kind())
+	assert.Equal(t, tree.root, traversal[2])
+	assert.Nil(t, traversal[2].Key())
+	assert.Nil(t, traversal[2].Value())
+
+	tree.ForEachDesc(func(node Node) bool {
+		assert.Equal(t, Node4, node.Kind())
+
+		return true
+	}, TraverseNode)
+}
+
 func TestTreeTraversalNode48(t *testing.T) {
 	t.Parallel()
 
@@ -516,6 +554,34 @@ func TestTreeTraversalNode48(t *testing.T) {
 	for i := 1; i <= 48; i++ {
 		assert.Equal(t, Key{byte(i)}, traversal[i].Key())
 		assert.Equal(t, Leaf, traversal[i].Kind())
+	}
+}
+
+func TestTreeTraversalDescNode48(t *testing.T) {
+	t.Parallel()
+
+	tree := newTree()
+	for i := 48; i > 0; i-- {
+		tree.Insert(Key{byte(i)}, i)
+	}
+
+	traversal := []Node{}
+
+	tree.ForEachDesc(func(node Node) bool {
+		traversal = append(traversal, node)
+
+		return true
+	}, TraverseAll)
+
+	// Ensure all nodes are inserted and traversed in order.
+	assert.Equal(t, 48, tree.size)
+	assert.Equal(t, tree.root, traversal[48])
+	assert.Equal(t, Node48, traversal[48].Kind())
+
+	for i := 1; i <= 48; i++ {
+		ri := 48 - i
+		assert.Equal(t, Key{byte(i)}, traversal[ri].Key())
+		assert.Equal(t, Leaf, traversal[ri].Kind())
 	}
 }
 

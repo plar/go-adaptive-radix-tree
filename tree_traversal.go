@@ -53,6 +53,36 @@ func traversalContext4_16_256(childZeroIdx int) *traverse4_16_256 {
 	}
 }
 
+// traverseDesc4_16_256 is a context for traversing nodes with 4, 16, or 256 children in descending order.
+type traverseDesc4_16_256 struct {
+	numChildren     int
+	childZeroActive bool
+	childCurIdx     int
+}
+
+// nextChildIdx returns the index of the next child node to traverse.
+func (tc *traverseDesc4_16_256) nextChildIdx() (int, bool) {
+	if tc.childZeroActive {
+		tc.childZeroActive = false
+
+		return tc.numChildren, true
+	}
+
+	idx := tc.childCurIdx
+	tc.childCurIdx--
+
+	return idx, idx >= 0
+}
+
+// traversalContext4_16_256 creates a new context for traversing node4/16/256 children.
+func traversalDescContext4_16_256(childZeroIdx int) *traverseDesc4_16_256 {
+	return &traverseDesc4_16_256{
+		numChildren:     childZeroIdx,
+		childZeroActive: true,
+		childCurIdx:     childZeroIdx,
+	}
+}
+
 // traverse48 is a context for traversing nodes with 48 children.
 type traverse48 struct {
 	childZeroIdx    int
@@ -99,6 +129,52 @@ func traversalContext48(n48 *node48) *traverse48 {
 	}
 }
 
+// traverseDesc48 is a context for traversing nodes with 48 children in descending order.
+type traverseDesc48 struct {
+	childZeroIdx    int
+	keyCurIdx       int
+	keyCurCh        byte
+	childZeroActive bool
+	n48             *node48
+}
+
+// nextChildIdx returns the index of the next child node to traverse.
+func (tc *traverseDesc48) nextChildIdx() (int, bool) {
+	if tc.childZeroActive {
+		tc.childZeroActive = false
+		idx := tc.childZeroIdx
+
+		return idx, true
+	}
+
+	for {
+		if tc.keyCurIdx < 0 {
+			break
+		}
+
+		if tc.n48.hasChild(tc.keyCurIdx) {
+			tc.keyCurCh = tc.n48.keys[tc.keyCurIdx]
+			tc.keyCurIdx--
+
+			return int(tc.keyCurCh), true
+		}
+
+		tc.keyCurIdx--
+	}
+
+	return 0, false
+}
+
+// traversalDescContext48 creates a new context for traversing node48 children in descending order.
+func traversalDescContext48(n48 *node48) *traverseDesc48 {
+	return &traverseDesc48{
+		childZeroIdx:    node48Max,
+		childZeroActive: true,
+		keyCurIdx:       node256Max - 1,
+		n48:             n48,
+	}
+}
+
 func newTraversalContext(n *nodeRef) traverseContext {
 	if n == nil {
 		return noopTraverseCtx
@@ -113,6 +189,25 @@ func newTraversalContext(n *nodeRef) traverseContext {
 		return traversalContext48(n.node48())
 	case Node256:
 		return traversalContext4_16_256(node256Max)
+	default:
+		return noopTraverseCtx
+	}
+}
+
+func newTraversalDescContext(n *nodeRef) traverseContext {
+	if n == nil {
+		return noopTraverseCtx
+	}
+
+	switch n.kind { //nolint:exhaustive
+	case Node4:
+		return traversalDescContext4_16_256(node4Max)
+	case Node16:
+		return traversalDescContext4_16_256(node16Max)
+	case Node48:
+		return traversalDescContext48(n.node48())
+	case Node256:
+		return traversalDescContext4_16_256(node256Max)
 	default:
 		return noopTraverseCtx
 	}
@@ -165,6 +260,25 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback) traverse
 	return tr.traverseNode(ctx, children, callback)
 }
 
+func (tr *tree) forEachDescRecursively(current *nodeRef, callback Callback) traverseAction {
+	if current == nil {
+		return traverseContinue
+	}
+
+	ctx := newTraversalDescContext(current)
+	children := toNode(current).allChildren()
+
+	if tr.traverseDescNode(ctx, children, callback) == traverseStop {
+		return traverseStop
+	}
+
+	if !callback(current) {
+		return traverseStop
+	}
+	return traverseContinue
+
+}
+
 func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback Callback) traverseAction {
 	for {
 		idx, ok := ctx.nextChildIdx()
@@ -174,6 +288,23 @@ func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback 
 
 		if child := children[idx]; child != nil {
 			if tr.forEachRecursively(child, callback) == traverseStop {
+				return traverseStop
+			}
+		}
+	}
+
+	return traverseContinue
+}
+
+func (tr *tree) traverseDescNode(ctx traverseContext, children []*nodeRef, callback Callback) traverseAction {
+	for {
+		idx, ok := ctx.nextChildIdx()
+		if !ok {
+			break
+		}
+
+		if child := children[idx]; child != nil {
+			if tr.forEachDescRecursively(child, callback) == traverseStop {
 				return traverseStop
 			}
 		}
