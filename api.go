@@ -97,6 +97,12 @@ type Tree interface {
 	// once per NodeXXX type in the tree.
 	ForEach(callback Callback, options ...int)
 
+	// ForEachDesc executes a provided callback once per leaf node by default in descending order.
+	// The callback iteration is terminated if the callback function returns false.
+	// Pass TraverseXXX as an options to execute a provided callback
+	// once per NodeXXX type in the tree.
+	ForEachDesc(callback Callback, options ...int)
+
 	// ForEachPrefix executes a provided callback once per leaf node that
 	// leaf's key starts with the given keyPrefix.
 	// The callback iteration is terminated if the callback function returns false.
