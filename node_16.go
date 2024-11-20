@@ -62,10 +62,6 @@ func (n *node16) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
-func (n *node16) childZero() **nodeRef {
-	return &n.children[node16Max]
-}
-
 func (n *node16) allChildren() []*nodeRef {
 	return n.children[:]
 }

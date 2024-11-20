@@ -140,7 +140,6 @@ func (ctx *traverse48Context) descTraversal() (int, bool) {
 // The reverse parameter indicates whether to traverse the children in reverse order.
 func newTraverse48Func(n48 *node48, reverse bool) traverseFunc {
 	ctx := &traverse48Context{
-
 		curKeyIdx: ternary(reverse, node256Max-1, 0),
 		n48:       n48,
 	}
@@ -219,18 +218,18 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback, reverse 
 	nextFn := newTraverseFunc(current, reverse)
 	children := toNode(current).allChildren()
 
-	return tr.traverseNode(nextFn, children, callback, reverse)
+	return tr.traverseChildren(nextFn, children, callback, reverse)
 }
 
-func (tr *tree) traverseNode(nextFn traverseFunc, children []*nodeRef, callback Callback, reverse bool) traverseAction {
+func (tr *tree) traverseChildren(nextFn traverseFunc, children []*nodeRef, cb Callback, reverse bool) traverseAction {
 	for {
-		idx, ok := nextFn()
-		if !ok {
+		idx, hasMore := nextFn()
+		if !hasMore {
 			break
 		}
 
 		if child := children[idx]; child != nil {
-			if tr.forEachRecursively(child, callback, reverse) == traverseStop {
+			if tr.forEachRecursively(child, cb, reverse) == traverseStop {
 				return traverseStop
 			}
 		}

@@ -539,7 +539,8 @@ func TestInsertDeleteWithZeroChild(t *testing.T) {
 		tree.Insert(w, w)
 	}
 
-	childZero := *toNode(tree.root).childZero()
+	all := toNode(tree.root).allChildren()
+	childZero := *all[len(all)-1]
 	assert.NotNil(t, childZero)
 	assert.Equal(t, Leaf, childZero.kind)
 	assert.Equal(t, Key("test/a"), childZero.Key())
