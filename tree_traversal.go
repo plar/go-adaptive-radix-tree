@@ -8,20 +8,15 @@ const (
 	traverseContinue                       // traverseContinue continues the tree traversal.
 )
 
-// traverseContext defines the interface for tree traversal context.
-type traverseContext interface {
-	// nextChildIdx returns the index of the next child node to traverse.
-	// The second return value indicates whether there are more child nodes to traverse.
-	nextChildIdx() (int, bool)
-}
+// traverseFunc defines the function for tree traversal.
+// It returns the index of the next child node to traverse.
+// The second return value indicates whether there are more child nodes to traverse.
+type traverseFunc func() (int, bool)
 
-type noopTraverseContext struct{}
-
-func (noopTraverseContext) nextChildIdx() (int, bool) {
+// noopTraverseFunc is a no-op function for tree traversal.
+func noopTraverseFunc() (int, bool) {
 	return 0, false
 }
-
-var noopTraverseCtx = &noopTraverseContext{} //nolint:gochecknoglobals
 
 // traverseOpts defines the options for tree traversal.
 type traverseOpts int
@@ -42,98 +37,133 @@ func (opts traverseOpts) hasReverse() bool {
 	return opts&TraverseReverse == TraverseReverse
 }
 
-// traverse4_16_256 is a context for traversing nodes with 4, 16, or 256 children.
-type traverse4_16_256 struct {
-	numChildren     int
-	childZeroActive bool
-	childCurIdx     int
+// traverseContext is a context for traversing nodes with 4, 16, or 256 children.
+type traverseContext struct {
+	numChildren   int
+	zeroChildDone bool
+	curChildIdx   int
 }
 
-// nextChildIdx returns the index of the next child node to traverse.
-func (tc *traverse4_16_256) nextChildIdx() (int, bool) {
-	if tc.childZeroActive {
-		tc.childZeroActive = false
+// ascTraversal traverses the children in ascending order.
+func (ctx *traverseContext) ascTraversal() (int, bool) {
+	if !ctx.zeroChildDone {
+		ctx.zeroChildDone = true
 
-		return tc.numChildren, true
+		return ctx.numChildren, true
 	}
 
-	idx := tc.childCurIdx
-	tc.childCurIdx++
+	idx := ctx.curChildIdx
+	ctx.curChildIdx++
 
-	return idx, idx < tc.numChildren
+	return idx, idx < ctx.numChildren
 }
 
-// traversalContext4_16_256 creates a new context for traversing node4/16/256 children.
-func traversalContext4_16_256(childZeroIdx int, _ bool) *traverse4_16_256 {
-	return &traverse4_16_256{
-		numChildren:     childZeroIdx,
-		childZeroActive: true,
-		childCurIdx:     0,
-	}
-}
-
-// traverse48 is a context for traversing nodes with 48 children.
-type traverse48 struct {
-	childZeroIdx    int
-	keyCurIdx       int
-	keyCurCh        byte
-	childZeroActive bool
-	n48             *node48
-}
-
-// nextChildIdx returns the index of the next child node to traverse.
-func (tc *traverse48) nextChildIdx() (int, bool) {
-	if tc.childZeroActive {
-		tc.childZeroActive = false
-		idx := tc.childZeroIdx
+// descTraversal traverses the children in descending order.
+func (ctx *traverseContext) descTraversal() (int, bool) {
+	if ctx.curChildIdx >= 0 {
+		idx := ctx.curChildIdx
+		ctx.curChildIdx--
 
 		return idx, true
 	}
 
-	for {
-		if tc.keyCurIdx >= node256Max {
-			break
-		}
+	if !ctx.zeroChildDone {
+		ctx.zeroChildDone = true
 
-		if tc.n48.hasChild(tc.keyCurIdx) {
-			tc.keyCurCh = tc.n48.keys[tc.keyCurIdx]
-			tc.keyCurIdx++
-
-			return int(tc.keyCurCh), true
-		}
-
-		tc.keyCurIdx++
+		return ctx.numChildren, true
 	}
 
 	return 0, false
 }
 
-// traversalContext48 creates a new context for traversing node48 children.
-func traversalContext48(n48 *node48, _ bool) *traverse48 {
-	return &traverse48{
-		childZeroIdx:    node48Max,
-		childZeroActive: true,
-		keyCurIdx:       0,
-		n48:             n48,
+// newTraverseGenericFunc creates a new traverseFunc for nodes with 4, 16, or 256 children.
+// The reverse parameter indicates whether to traverse the children in reverse order.
+func newTraverseGenericFunc(numChildren int, reverse bool) traverseFunc {
+	ctx := &traverseContext{
+		numChildren:   numChildren,
+		zeroChildDone: false,
+		curChildIdx:   ternary(reverse, numChildren-1, 0),
 	}
+
+	return ternary(reverse, ctx.descTraversal, ctx.ascTraversal)
 }
 
-func newTraversalContext(n *nodeRef, reverse bool) traverseContext {
+// traverse48Context is a context for traversing nodes with 48 children.
+type traverse48Context struct {
+	curKeyIdx     int
+	curKeyCh      byte
+	zeroChildDone bool
+	n48           *node48
+}
+
+// ascTraversal traverses the children in ascending order.
+func (ctx *traverse48Context) ascTraversal() (int, bool) {
+	if !ctx.zeroChildDone {
+		ctx.zeroChildDone = true
+
+		return node48Max, true
+	}
+
+	for ; ctx.curKeyIdx < node256Max; ctx.curKeyIdx++ {
+		if ctx.n48.hasChild(ctx.curKeyIdx) {
+			ctx.curKeyCh = ctx.n48.keys[ctx.curKeyIdx]
+			ctx.curKeyIdx++
+
+			return int(ctx.curKeyCh), true
+		}
+	}
+
+	return 0, false
+}
+
+// descTraversal traverses the children in descending order.
+func (ctx *traverse48Context) descTraversal() (int, bool) {
+	for ; ctx.curKeyIdx > 0; ctx.curKeyIdx-- {
+		if ctx.n48.hasChild(ctx.curKeyIdx) {
+			ctx.curKeyCh = ctx.n48.keys[ctx.curKeyIdx]
+			ctx.curKeyIdx--
+
+			return int(ctx.curKeyCh), true
+		}
+	}
+
+	if !ctx.zeroChildDone {
+		ctx.zeroChildDone = true
+
+		return node48Max, true
+	}
+
+	return 0, false
+}
+
+// newTraverse48Func creates a new traverseFunc for nodes with 48 children.
+// The reverse parameter indicates whether to traverse the children in reverse order.
+func newTraverse48Func(n48 *node48, reverse bool) traverseFunc {
+	ctx := &traverse48Context{
+
+		curKeyIdx: ternary(reverse, node256Max-1, 0),
+		n48:       n48,
+	}
+
+	return ternary(reverse, ctx.descTraversal, ctx.ascTraversal)
+}
+
+func newTraverseFunc(n *nodeRef, reverse bool) traverseFunc {
 	if n == nil {
-		return noopTraverseCtx
+		return noopTraverseFunc
 	}
 
 	switch n.kind { //nolint:exhaustive
 	case Node4:
-		return traversalContext4_16_256(node4Max, reverse)
+		return newTraverseGenericFunc(node4Max, reverse)
 	case Node16:
-		return traversalContext4_16_256(node16Max, reverse)
+		return newTraverseGenericFunc(node16Max, reverse)
 	case Node48:
-		return traversalContext48(n.node48(), reverse)
+		return newTraverse48Func(n.node48(), reverse)
 	case Node256:
-		return traversalContext4_16_256(node256Max, reverse)
+		return newTraverseGenericFunc(node256Max, reverse)
 	default:
-		return noopTraverseCtx
+		return noopTraverseFunc
 	}
 }
 
@@ -186,15 +216,15 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback, reverse 
 		return traverseStop
 	}
 
-	ctx := newTraversalContext(current, reverse)
+	nextFn := newTraverseFunc(current, reverse)
 	children := toNode(current).allChildren()
 
-	return tr.traverseNode(ctx, children, callback, reverse)
+	return tr.traverseNode(nextFn, children, callback, reverse)
 }
 
-func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback Callback, reverse bool) traverseAction {
+func (tr *tree) traverseNode(nextFn traverseFunc, children []*nodeRef, callback Callback, reverse bool) traverseAction {
 	for {
-		idx, ok := ctx.nextChildIdx()
+		idx, ok := nextFn()
 		if !ok {
 			break
 		}

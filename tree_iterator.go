@@ -27,22 +27,22 @@ func (s *state) discard() {
 
 // iteratorContext represents the context of the tree iterator for one node.
 type iteratorContext struct {
-	tctx     traverseContext
-	children []*nodeRef
+	nextChildFn traverseFunc
+	children    []*nodeRef
 }
 
 // newIteratorContext creates a new iterator context for the given node.
 func newIteratorContext(nr *nodeRef, reverse bool) *iteratorContext {
 	return &iteratorContext{
-		tctx:     newTraversalContext(nr, reverse),
-		children: toNode(nr).allChildren(),
+		nextChildFn: newTraverseFunc(nr, reverse),
+		children:    toNode(nr).allChildren(),
 	}
 }
 
 // next returns the next node reference and a flag indicating if there are more nodes.
 func (ic *iteratorContext) next() (*nodeRef, bool) {
 	for {
-		idx, ok := ic.tctx.nextChildIdx()
+		idx, ok := ic.nextChildFn()
 		if !ok {
 			break
 		}

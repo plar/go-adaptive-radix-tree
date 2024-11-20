@@ -115,14 +115,21 @@ func (stats *treeStats) processStats(node Node) bool {
 	return true
 }
 
-// collectStats collects the statistics of the tree.
-func collectStats(it Iterator) treeStats {
-	stats := treeStats{}
-
+// iterateWithCallback iterates the tree with the given callback.
+func iterateWithCallback(it Iterator, cb func(node Node) bool) {
 	for it.HasNext() {
 		node, _ := it.Next()
-		stats.processStats(node)
+		if !cb(node) {
+			break
+		}
 	}
+}
+
+// collectStats collects the statistics of the tree.
+func collectStats(it Iterator) treeStats {
+	var stats treeStats
+
+	iterateWithCallback(it, stats.processStats)
 
 	return stats
 }
