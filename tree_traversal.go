@@ -23,6 +23,25 @@ func (noopTraverseContext) nextChildIdx() (int, bool) {
 
 var noopTraverseCtx = &noopTraverseContext{} //nolint:gochecknoglobals
 
+// traverseOpts defines the options for tree traversal.
+type traverseOpts int
+
+func (opts traverseOpts) hasLeaf() bool {
+	return opts&TraverseLeaf == TraverseLeaf
+}
+
+func (opts traverseOpts) hasNode() bool {
+	return opts&TraverseNode == TraverseNode
+}
+
+func (opts traverseOpts) hasAll() bool {
+	return opts&TraverseAll == TraverseAll
+}
+
+func (opts traverseOpts) hasReverse() bool {
+	return opts&TraverseReverse == TraverseReverse
+}
+
 // traverse4_16_256 is a context for traversing nodes with 4, 16, or 256 children.
 type traverse4_16_256 struct {
 	numChildren     int
@@ -45,7 +64,7 @@ func (tc *traverse4_16_256) nextChildIdx() (int, bool) {
 }
 
 // traversalContext4_16_256 creates a new context for traversing node4/16/256 children.
-func traversalContext4_16_256(childZeroIdx int) *traverse4_16_256 {
+func traversalContext4_16_256(childZeroIdx int, _ bool) *traverse4_16_256 {
 	return &traverse4_16_256{
 		numChildren:     childZeroIdx,
 		childZeroActive: true,
@@ -90,7 +109,7 @@ func (tc *traverse48) nextChildIdx() (int, bool) {
 }
 
 // traversalContext48 creates a new context for traversing node48 children.
-func traversalContext48(n48 *node48) *traverse48 {
+func traversalContext48(n48 *node48, _ bool) *traverse48 {
 	return &traverse48{
 		childZeroIdx:    node48Max,
 		childZeroActive: true,
@@ -99,50 +118,58 @@ func traversalContext48(n48 *node48) *traverse48 {
 	}
 }
 
-func newTraversalContext(n *nodeRef) traverseContext {
+func newTraversalContext(n *nodeRef, reverse bool) traverseContext {
 	if n == nil {
 		return noopTraverseCtx
 	}
 
 	switch n.kind { //nolint:exhaustive
 	case Node4:
-		return traversalContext4_16_256(node4Max)
+		return traversalContext4_16_256(node4Max, reverse)
 	case Node16:
-		return traversalContext4_16_256(node16Max)
+		return traversalContext4_16_256(node16Max, reverse)
 	case Node48:
-		return traversalContext48(n.node48())
+		return traversalContext48(n.node48(), reverse)
 	case Node256:
-		return traversalContext4_16_256(node256Max)
+		return traversalContext4_16_256(node256Max, reverse)
 	default:
 		return noopTraverseCtx
 	}
 }
 
-func traverseOptions(options ...int) int {
+func mergeOptions(options ...int) int {
 	opts := 0
 	for _, opt := range options {
 		opts |= opt
 	}
 
-	opts &= TraverseAll
-	if opts == 0 {
-		opts = TraverseLeaf // By default filter only leafs
-	}
-
 	return opts
 }
 
-func traverseFilter(options int, callback Callback) Callback {
-	if options == TraverseAll {
+func traverseOptions(options ...int) traverseOpts {
+	opts := mergeOptions(options...)
+
+	typeOpts := opts & TraverseAll
+	if typeOpts == 0 {
+		typeOpts = TraverseLeaf // By default filter only leafs
+	}
+
+	orderOpts := opts & TraverseReverse
+
+	return traverseOpts(typeOpts | orderOpts)
+}
+
+func traverseFilter(opts traverseOpts, callback Callback) Callback {
+	if opts.hasAll() {
 		return callback
 	}
 
 	return func(node Node) bool {
-		if options&TraverseLeaf == TraverseLeaf && node.Kind() == Leaf {
+		if opts.hasLeaf() && node.Kind() == Leaf {
 			return callback(node)
 		}
 
-		if options&TraverseNode == TraverseNode && node.Kind() != Leaf {
+		if opts.hasNode() && node.Kind() != Leaf {
 			return callback(node)
 		}
 
@@ -150,7 +177,7 @@ func traverseFilter(options int, callback Callback) Callback {
 	}
 }
 
-func (tr *tree) forEachRecursively(current *nodeRef, callback Callback) traverseAction {
+func (tr *tree) forEachRecursively(current *nodeRef, callback Callback, reverse bool) traverseAction {
 	if current == nil {
 		return traverseContinue
 	}
@@ -159,13 +186,13 @@ func (tr *tree) forEachRecursively(current *nodeRef, callback Callback) traverse
 		return traverseStop
 	}
 
-	ctx := newTraversalContext(current)
+	ctx := newTraversalContext(current, reverse)
 	children := toNode(current).allChildren()
 
-	return tr.traverseNode(ctx, children, callback)
+	return tr.traverseNode(ctx, children, callback, reverse)
 }
 
-func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback Callback) traverseAction {
+func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback Callback, reverse bool) traverseAction {
 	for {
 		idx, ok := ctx.nextChildIdx()
 		if !ok {
@@ -173,7 +200,7 @@ func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback 
 		}
 
 		if child := children[idx]; child != nil {
-			if tr.forEachRecursively(child, callback) == traverseStop {
+			if tr.forEachRecursively(child, callback, reverse) == traverseStop {
 				return traverseStop
 			}
 		}
@@ -182,7 +209,9 @@ func (tr *tree) traverseNode(ctx traverseContext, children []*nodeRef, callback 
 	return traverseContinue
 }
 
-func (tr *tree) forEachPrefix(key Key, callback Callback) traverseAction {
+func (tr *tree) forEachPrefix(key Key, callback Callback, opts int) traverseAction {
+	opts &= (TraverseLeaf | TraverseReverse) // keep only leaf and reverse options
+
 	tr.ForEach(func(n Node) bool {
 		current, ok := n.(*nodeRef)
 		if !ok {
@@ -194,7 +223,7 @@ func (tr *tree) forEachPrefix(key Key, callback Callback) traverseAction {
 		}
 
 		return true
-	}, TraverseLeaf)
+	}, opts)
 
 	return traverseContinue
 }
