@@ -385,7 +385,7 @@ func TestTraversalForEachWordsBothDirections(t *testing.T) {
 
 		return true
 	})
-	assert.Len(t, len(asc), 235886)
+	assert.Len(t, asc, 235886)
 
 	tree.ForEach(func(node Node) bool {
 		val, ok := node.Value().([]byte)
@@ -395,7 +395,7 @@ func TestTraversalForEachWordsBothDirections(t *testing.T) {
 
 		return true
 	}, TraverseReverse)
-	assert.Len(t, len(desc), 235886)
+	assert.Len(t, desc, 235886)
 
 	assert.True(t, areReversedCopies(asc, desc))
 }
@@ -417,7 +417,7 @@ func TestTraversalIteratorWordsBothDirections(t *testing.T) {
 
 		return true
 	})
-	assert.Len(t, len(asc), 235886)
+	assert.Len(t, asc, 235886)
 
 	iterateWithCallback(tree.Iterator(TraverseReverse), func(node Node) bool {
 		val, ok := node.Value().([]byte)
@@ -427,7 +427,7 @@ func TestTraversalIteratorWordsBothDirections(t *testing.T) {
 
 		return true
 	})
-	assert.Len(t, len(desc), 235886)
+	assert.Len(t, desc, 235886)
 
 	assert.True(t, areReversedCopies(asc, desc))
 }
