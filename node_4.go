@@ -213,6 +213,6 @@ func (n *node4) deleteChildAt(idx int) {
 func (n *node4) clearLastElement() {
 	lastIdx := int(n.childrenLen)
 	n.keys[lastIdx] = 0
-	n.present[lastIdx] = 1
+	n.present[lastIdx] = 0
 	n.children[lastIdx] = nil
 }
