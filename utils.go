@@ -74,3 +74,12 @@ func nodeMaximum(children []*nodeRef) *leaf {
 
 	return nil
 }
+
+// ternary is a generic ternary operator.
+func ternary[T any](condition bool, ifTrue T, ifFalse T) T {
+	if condition {
+		return ifTrue
+	}
+
+	return ifFalse
+}

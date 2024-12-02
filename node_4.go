@@ -36,10 +36,6 @@ func (n *node4) childAt(idx int) **nodeRef {
 	return &n.children[idx]
 }
 
-func (n *node4) childZero() **nodeRef {
-	return &n.children[node4Max]
-}
-
 func (n *node4) allChildren() []*nodeRef {
 	return n.children[:]
 }
@@ -217,6 +213,6 @@ func (n *node4) deleteChildAt(idx int) {
 func (n *node4) clearLastElement() {
 	lastIdx := int(n.childrenLen)
 	n.keys[lastIdx] = 0
-	n.present[lastIdx] = 1
+	n.present[lastIdx] = 0
 	n.children[lastIdx] = nil
 }

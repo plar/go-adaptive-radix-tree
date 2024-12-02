@@ -149,12 +149,13 @@ func (tr *tree) Size() int {
 // ForEach iterates over all keys in the tree and calls the callback function.
 func (tr *tree) ForEach(callback Callback, opts ...int) {
 	options := traverseOptions(opts...)
-	tr.forEachRecursively(tr.root, traverseFilter(options, callback))
+	tr.forEachRecursively(tr.root, traverseFilter(options, callback), options.hasReverse())
 }
 
 // ForEachPrefix iterates over all keys with the given prefix.
-func (tr *tree) ForEachPrefix(key Key, callback Callback) {
-	tr.forEachPrefix(key, callback)
+func (tr *tree) ForEachPrefix(key Key, callback Callback, opts ...int) {
+	options := mergeOptions(opts...)
+	tr.forEachPrefix(key, callback, options)
 }
 
 // Iterator returns a new tree iterator.

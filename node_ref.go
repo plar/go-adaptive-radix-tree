@@ -41,7 +41,6 @@ type nodeOperations interface {
 
 type nodeChildren interface {
 	childAt(idx int) **nodeRef
-	childZero() **nodeRef
 	allChildren() []*nodeRef
 }
 
@@ -89,7 +88,6 @@ func (*noop) minimum() *leaf             { return nil }
 func (*noop) maximum() *leaf             { return nil }
 func (*noop) index(keyChar) int          { return indexNotFound }
 func (*noop) childAt(int) **nodeRef      { return &nodeNotFound }
-func (*noop) childZero() **nodeRef       { return &nodeNotFound }
 func (*noop) allChildren() []*nodeRef    { return nil }
 func (*noop) hasCapacityForChild() bool  { return true }
 func (*noop) grow() *nodeRef             { return nil }

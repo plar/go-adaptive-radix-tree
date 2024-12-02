@@ -21,6 +21,9 @@ const (
 
 	// Iterate over all nodes in the tree.
 	TraverseAll = TraverseLeaf | TraverseNode
+
+	// Iterate in reverse order.
+	TraverseReverse = 4
 )
 
 // These errors can be returned when iteration over the tree.
@@ -37,82 +40,96 @@ func (k Kind) String() string {
 	return []string{"Leaf", "Node4", "Node16", "Node48", "Node256"}[k]
 }
 
-// Key Type.
-// Key can be a set of any characters include unicode chars with null bytes.
+// Key represents the type used for keys in the Adaptive Radix Tree.
+// It can consist of any byte sequence, including Unicode characters and null bytes.
 type Key []byte
 
-// Value type.
+// Value is an interface representing the value type stored in the tree.
+// Any type of data can be stored as a Value.
 type Value interface{}
 
-// Callback function type for tree traversal.
-// if the callback function returns false then iteration is terminated.
+// Callback defines the function type used during tree traversal.
+// It is invoked for each node visited in the traversal.
+// If the callback function returns false, the iteration is terminated early.
 type Callback func(node Node) (cont bool)
 
-// Node interface.
+// Node represents a node within the Adaptive Radix Tree.
 type Node interface {
-	// Kind returns node type.
+	// Kind returns the type of the node, distinguishing between leaf and internal nodes.
 	Kind() Kind
 
-	// Key returns leaf's key.
-	// This method is only valid for leaf node,
-	// if its called on non-leaf node then returns nil.
+	// Key returns the key associated with a leaf node.
+	// This method should only be called on leaf nodes.
+	// Calling this on a non-leaf node will return nil.
 	Key() Key
 
-	// Value returns leaf's value.
-	// This method is only valid for leaf node,
-	// if its called on non-leaf node then returns nil.
+	// Value returns the value stored in a leaf node.
+	// This method should only be called on leaf nodes.
+	// Calling this on a non-leaf node will return nil.
 	Value() Value
 }
 
-// Iterator iterates over nodes in key order.
+// Iterator provides a mechanism to traverse nodes in key order within the tree.
 type Iterator interface {
-	// Returns true if the iteration has more nodes when traversing the tree.
+	// HasNext returns true if there are more nodes to visit during the iteration.
+	// Use this method to check for remaining nodes before calling Next.
 	HasNext() bool
 
-	// Returns the next element in the tree and advances the iterator position.
-	// Returns ErrNoMoreNodes error if there are no more nodes in the tree.
-	// Check if there is a next node with HasNext method.
-	// Returns ErrConcurrentModification error if the tree has been structurally
-	// modified after the iterator was created.
+	// Next returns the next node in the iteration and advances the iterator's position.
+	// If the iteration has no more nodes, it returns ErrNoMoreNodes error.
+	// Ensure you call HasNext before invoking Next to avoid errors.
+	// If the tree has been structurally modified since the iterator was created,
+	// it returns an ErrConcurrentModification error.
 	Next() (Node, error)
 }
 
 // Tree is an Adaptive Radix Tree interface.
 type Tree interface {
-	// Insert a new key into the tree.
-	// If the key already in the tree then return oldValue, true and nil, false otherwise.
+	// Insert adds a new key-value pair into the tree.
+	// If the key already exists in the tree, it updates its value and returns the old value along with true.
+	// If the key is new, it returns nil and false.
 	Insert(key Key, value Value) (oldValue Value, updated bool)
 
-	// Delete removes a key from the tree and key's value, true is returned.
-	// If the key does not exists then nothing is done and nil, false is returned.
+	// Delete removes the specified key and its associated value from the tree.
+	// If the key is found and deleted, it returns the removed value and true.
+	// If the key does not exist, it returns nil and false.
 	Delete(key Key) (value Value, deleted bool)
 
-	// Search returns the value of the specific key.
-	// If the key exists then return value, true and nil, false otherwise.
+	// Search retrieves the value associated with the specified key in the tree.
+	// If the key exists, it returns the value and true.
+	// If the key does not exist, it returns nil and false.
 	Search(key Key) (value Value, found bool)
 
-	// ForEach executes a provided callback once per leaf node by default.
-	// The callback iteration is terminated if the callback function returns false.
-	// Pass TraverseXXX as an options to execute a provided callback
-	// once per NodeXXX type in the tree.
+	// ForEach iterates over all the nodes in the tree, invoking a provided callback function for each node.
+	// By default, it processes leaf nodes in ascending order.
+	// The iteration can be customized using options:
+	// - Pass TraverseReverse to iterate over nodes in descending order.
+	// The iteration stops if the callback function returns false, allowing for early termination.
 	ForEach(callback Callback, options ...int)
 
-	// ForEachPrefix executes a provided callback once per leaf node that
-	// leaf's key starts with the given keyPrefix.
-	// The callback iteration is terminated if the callback function returns false.
-	ForEachPrefix(keyPrefix Key, callback Callback)
+	// ForEachPrefix iterates over all leaf nodes whose keys start with the specified keyPrefix,
+	// invoking a provided callback function for each matching node.
+	// By default, the iteration processes nodes in ascending order.
+	// Use the TraverseReverse option to iterate over nodes in descending order.
+	// Iteration stops if the callback function returns false, allowing for early termination.
+	ForEachPrefix(keyPrefix Key, callback Callback, options ...int)
 
-	// Iterator returns an iterator for preorder traversal over leaf nodes by default.
-	// Pass TraverseXXX as an options to return an iterator for preorder traversal over all NodeXXX types.
+	// Iterator returns an iterator for traversing leaf nodes in the tree.
+	// By default, the iteration occurs in ascending order.
+	// To traverse nodes in reverse (descending) order, pass the TraverseReverse option.
 	Iterator(options ...int) Iterator
 
-	// Minimum returns the minimum valued leaf, true if leaf is found and nil, false otherwise.
+	// Minimum retrieves the leaf node with the smallest key in the tree.
+	// If such a leaf is found, it returns its value and true.
+	// If the tree is empty, it returns nil and false.
 	Minimum() (Value, bool)
 
-	// Maximum returns the maximum valued leaf, true if leaf is found and nil, false otherwise.
+	// Maximum retrieves the leaf node with the largest key in the tree.
+	// If such a leaf is found, it returns its value and true.
+	// If the tree is empty, it returns nil and false.
 	Maximum() (Value, bool)
 
-	// Returns size of the tree
+	// Size returns the number of key-value pairs stored in the tree.
 	Size() int
 }
 

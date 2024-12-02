@@ -15,6 +15,7 @@ Features:
 * Minimum / Maximum value lookups
 * Ordered iteration
 * Prefix-based iteration
+* Reverse iteration support
 * Support for keys with null bytes, any byte array could be a key
 
 # Usage
@@ -28,31 +29,61 @@ import (
 )
 
 func main() {
+	// Initialize a new Adaptive Radix Tree
+	tree := art.New()
 
-    tree := art.New()
+	// Insert key-value pairs into the tree
+	tree.Insert(art.Key("apple"), "A sweet red fruit")
+	tree.Insert(art.Key("banana"), "A long yellow fruit")
+	tree.Insert(art.Key("cherry"), "A small red fruit")
+	tree.Insert(art.Key("date"), "A sweet brown fruit")
 
-    tree.Insert(art.Key("Hi, I'm Key"), "Nice to meet you, I'm Value")
-    value, found := tree.Search(art.Key("Hi, I'm Key"))
-    if found {
-        fmt.Printf("Search value=%v\n", value)
-    }
+	// Search for a value by key
+	if value, found := tree.Search(art.Key("banana")); found {
+		fmt.Println("Found:", value)
+	} else {
+		fmt.Println("Key not found")
+	}
 
-    tree.ForEach(func(node art.Node) bool {
-        fmt.Printf("Callback value=%v\n", node.Value())
-        return true
-    })
+	// Iterate over the tree in ascending order
+	fmt.Println("\nAscending order iteration:")
+	tree.ForEach(func(node art.Node) bool {
+		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value())
+		return true
+	})
 
-    for it := tree.Iterator(); it.HasNext(); {
-        value, _ := it.Next()
-        fmt.Printf("Iterator value=%v\n", value.Value())
-    }
+	// Iterate over the tree in descending order using reverse traversal
+	fmt.Println("\nDescending order iteration:")
+	tree.ForEach(func(node art.Node) bool {
+		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value()))
+		return true
+	}, art.TraverseReverse)
+
+	// Iterate over keys with a specific prefix
+	fmt.Println("\nIteration with prefix 'c':")
+	tree.ForEachPrefix(art.Key("c"), func(node art.Node) bool {
+		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value())
+		return true
+	})
 }
 
-// Output:
-// Search value=Nice to meet you, I'm Value
-// Callback value=Nice to meet you, I'm Value
-// Iterator value=Nice to meet you, I'm Value
-
+// Expected Output:
+// Found: A long yellow fruit
+//
+// Ascending order iteration:
+// Key: apple, Value: A sweet red fruit
+// Key: banana, Value: A long yellow fruit
+// Key: cherry, Value: A small red fruit
+// Key: date, Value: A sweet brown fruit
+//
+// Descending order iteration:
+// Key: date, Value: A sweet brown fruit
+// Key: cherry, Value: A small red fruit
+// Key: banana, Value: A long yellow fruit
+// Key: apple, Value: A sweet red fruit
+//
+// Iteration with prefix 'c':
+// Key: cherry, Value: A small red fruit
 ```
 
 # Documentation
@@ -62,7 +93,7 @@ Check out the documentation on [godoc.org](http://godoc.org/github.com/plar/go-a
 # Performance
 
 [plar/go-adaptive-radix-tree](https://github.com/plar/go-adaptive-radix-tree) outperforms [kellydunn/go-art](https://github.com/kellydunn/go-art) by avoiding memory allocations during search operations.
-It also provides prefix based iteration over the tree.
+It also provides prefix based and reverse iteration over the tree.
 
 Benchmarks were performed on datasets extracted from different projects:
 - The "Words" dataset contains a list of 235,886 english words. [2]
