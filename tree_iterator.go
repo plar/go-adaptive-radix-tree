@@ -27,22 +27,22 @@ func (s *state) discard() {
 
 // iteratorContext represents the context of the tree iterator for one node.
 type iteratorContext struct {
-	tctx     traverseContext
-	children []*nodeRef
+	nextChildFn traverseFunc
+	children    []*nodeRef
 }
 
 // newIteratorContext creates a new iterator context for the given node.
-func newIteratorContext(nr *nodeRef) *iteratorContext {
+func newIteratorContext(nr *nodeRef, reverse bool) *iteratorContext {
 	return &iteratorContext{
-		tctx:     newTraversalContext(nr),
-		children: toNode(nr).allChildren(),
+		nextChildFn: newTraverseFunc(nr, reverse),
+		children:    toNode(nr).allChildren(),
 	}
 }
 
 // next returns the next node reference and a flag indicating if there are more nodes.
 func (ic *iteratorContext) next() (*nodeRef, bool) {
 	for {
-		idx, ok := ic.tctx.nextChildIdx()
+		idx, ok := ic.nextChildFn()
 		if !ok {
 			break
 		}
@@ -57,24 +57,26 @@ func (ic *iteratorContext) next() (*nodeRef, bool) {
 
 // iterator is a struct for tree traversal iteration.
 type iterator struct {
-	version  int
-	tree     *tree
-	state    *state
-	nextNode *nodeRef
+	version  int      // tree version at the time of iterator creation
+	tree     *tree    // tree to iterate
+	state    *state   // iteration state
+	nextNode *nodeRef // next node to iterate
+	reverse  bool     // indicates if the iteration is in reverse order
 }
 
 // assert that iterator implements the Iterator interface.
 var _ Iterator = (*iterator)(nil)
 
-func newTreeIterator(tr *tree, opts int) Iterator {
+func newTreeIterator(tr *tree, opts traverseOpts) Iterator {
 	state := &state{}
-	state.push(newIteratorContext(tr.root))
+	state.push(newIteratorContext(tr.root, opts.hasReverse()))
 
 	it := &iterator{
 		version:  tr.version,
 		tree:     tr,
 		nextNode: tr.root,
 		state:    state,
+		reverse:  opts.hasReverse(),
 	}
 
 	if opts&TraverseAll == TraverseAll {
@@ -128,7 +130,7 @@ func (it *iterator) next() {
 		nextNode, hasMore := ctx.next()
 		if hasMore {
 			it.nextNode = nextNode
-			it.state.push(newIteratorContext(nextNode))
+			it.state.push(newIteratorContext(nextNode, it.reverse))
 
 			return
 		}
@@ -140,7 +142,7 @@ func (it *iterator) next() {
 // BufferedIterator implements HasNext and Next methods for buffered iteration.
 // It allows to iterate over leaf or non-leaf nodes only.
 type bufferedIterator struct {
-	opts     int
+	opts     traverseOpts
 	it       Iterator
 	nextNode Node
 	nextErr  error
