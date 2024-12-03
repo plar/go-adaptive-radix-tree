@@ -38,7 +38,7 @@ qa() {
 
 ## qa/mod: run go mod tidy and go mod verify
 qa_mod() {
-    echo "✔︎ Running go mod tidy and go mod verify..."
+    echo "✔️ Running go mod tidy and go mod verify..."
     go mod tidy -v
     go mod verify
 }
@@ -112,19 +112,19 @@ qa_benchmarks() {
 
 ## go/tidy: tidy modfiles and format .go files
 go_tidy() {
-    echo "✔︎ Running go mod tidy..."
+    echo "✔️ Running go mod tidy..."
     go mod tidy -v
 }
 
 ## go/fmt: format .go files
 go_fmt() {
-    echo "✔︎ Running go fmt..."
+    echo "✔️ Running go fmt..."
     go fmt ./...
 }
 
 ## go/build/asm: build the package and show the assembly output
 go_build_asm() {
-    echo "✔︎ Running go build asm..."
+    echo "✔️ Running go build asm..."
     go build -a -work -v -gcflags="-S -B -C" .
 }
 
@@ -135,7 +135,7 @@ go_build_asm() {
 ## [git]: git commands
 ## git/push: push changes to the github repository
 git_push() {
-    echo "✔︎ Running git push..."
+    echo "✔️ Running git push..."
 
     confirm "Pushing changes to the github repository." || exit 1
     qa
@@ -145,7 +145,7 @@ git_push() {
 
 ## git/release: release a new version
 git_release() {
-    echo "✔︎ Running git release..."
+    echo "✔️ Running git release..."
 
     confirm "Releasing a new version." || exit 1
     qa
