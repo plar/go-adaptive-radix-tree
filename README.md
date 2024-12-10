@@ -11,6 +11,7 @@ Features:
 * Space efficient
 * Performance is comparable to hash tables
 * Maintains the data in sorted order, which enables additional operations like range scan and prefix lookup
+	> Keys are sorted **lexicographically** based on their byte values.
 * `O(k)` search/insert/delete operations, where `k` is the length of the key
 * Minimum / Maximum value lookups
 * Ordered iteration
