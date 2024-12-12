@@ -9,7 +9,7 @@
 //
 //	import (
 //	   "fmt"
-//	   "github.com/plar/go-adaptive-radix-tree"
+//	   "github.com/plar/go-adaptive-radix-tree/v2"
 //	)
 //
 //	func main() {
