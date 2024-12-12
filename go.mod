@@ -1,4 +1,4 @@
-module github.com/plar/go-adaptive-radix-tree
+module github.com/plar/go-adaptive-radix-tree/v2
 
 go 1.18
 

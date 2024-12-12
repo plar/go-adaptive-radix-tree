@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	art "github.com/plar/go-adaptive-radix-tree"
+	art "github.com/plar/go-adaptive-radix-tree/v2"
 )
 
 // GTree is a generic tree that supports any type for keys and values.
