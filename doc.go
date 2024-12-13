@@ -3,40 +3,41 @@
 //
 // The design of ART is based on "The Adaptive Radix Tree: ARTful Indexing for Main-Memory Databases" [1].
 //
-// Usage
+// Usage:
 //
-//	package main
+//     package main
 //
-//	import (
-//	   "fmt"
-//	   "github.com/plar/go-adaptive-radix-tree/v2"
-//	)
+//     import (
+//         "fmt"
 //
-//	func main() {
+//         art "github.com/plar/go-adaptive-radix-tree/v2"
+//     )
 //
-//	   tree := art.New()
+//     func main() {
 //
-//	   tree.Insert(art.Key("Hi, I'm Key"), "Nice to meet you, I'm Value")
-//	   value, found := tree.Search(art.Key("Hi, I'm Key"))
-//	   if found {
-//	       fmt.Printf("Search value=%v\n", value)
-//	   }
+//         tree := art.New()
 //
-//	   tree.ForEach(func(node art.Node) bool {
-//	       fmt.Printf("Callback value=%v\n", node.Value())
-//	       return true
-//	   }
+//         tree.Insert(art.Key("Hi, I'm Key"), "Nice to meet you, I'm Value")
+//         value, found := tree.Search(art.Key("Hi, I'm Key"))
+//         if found {
+//             fmt.Printf("Search value=%v\n", value)
+//         }
 //
-//	   for it := tree.Iterator(); it.HasNext(); {
-//	       value, _ := it.Next()
-//	       fmt.Printf("Iterator value=%v\n", value.Value())
-//	   }
-//	}
+//         tree.ForEach(func(node art.Node) bool {
+//             fmt.Printf("Callback value=%v\n", node.Value())
+//             return true
+//         })
 //
-//	// Output:
-//	// Search value=Nice to meet you, I'm Value
-//	// Callback value=Nice to meet you, I'm Value
-//	// Iterator value=Nice to meet you, I'm Value
+//         for it := tree.Iterator(); it.HasNext(); {
+//             value, _ := it.Next()
+//             fmt.Printf("Iterator value=%v\n", value.Value())
+//         }
+//     }
+//
+// Output:
+// Search value=Nice to meet you, I'm Value
+// Callback value=Nice to meet you, I'm Value
+// Iterator value=Nice to meet you, I'm Value
 //
 // Also the current implementation was inspired by [2] and [3]
 //
