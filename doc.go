@@ -35,9 +35,10 @@
 //	}
 //
 // Output:
-// Search value=Nice to meet you, I'm Value
-// Callback value=Nice to meet you, I'm Value
-// Iterator value=Nice to meet you, I'm Value
+//
+//	Search value=Nice to meet you, I'm Value
+//	Callback value=Nice to meet you, I'm Value
+//	Iterator value=Nice to meet you, I'm Value
 //
 // Also the current implementation was inspired by [2] and [3]
 //
