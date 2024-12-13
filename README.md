@@ -21,6 +21,8 @@ Features:
 
 # Usage
 
+[The Go playground](https://go.dev/play/p/tBJa0d50eOp)
+
 ```go
 package main
 
