@@ -91,7 +91,7 @@ func main() {
 
 # Documentation
 
-Check out the documentation on [godoc.org](http://godoc.org/github.com/plar/go-adaptive-radix-tree)
+Check out the documentation on [pkg.go.dev/github.com/plar/go-adaptive-radix-tree/v2](https://pkg.go.dev/github.com/plar/go-adaptive-radix-tree/v2).
 
 # Performance
 
