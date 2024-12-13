@@ -26,8 +26,8 @@ Features:
 package main
 
 import (
-    "fmt"
-    "github.com/plar/go-adaptive-radix-tree"
+	"fmt"
+	art "github.com/plar/go-adaptive-radix-tree"
 )
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	// Iterate over the tree in descending order using reverse traversal
 	fmt.Println("\nDescending order iteration:")
 	tree.ForEach(func(node art.Node) bool {
-		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value()))
+		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value())
 		return true
 	}, art.TraverseReverse)
 
