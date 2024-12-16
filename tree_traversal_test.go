@@ -529,4 +529,63 @@ func TestTreeIterateWordsStats(t *testing.T) {
 
 	stats = collectStats(tree.Iterator(TraverseNode))
 	assert.Equal(t, treeStats{0, 113419, 10433, 403, 1}, stats)
+
+	// by default Iterator traverses only leaf nodes
+	stats = collectStats(tree.Iterator())
+	assert.Equal(t, treeStats{235886, 0, 0, 0, 0}, stats)
+}
+
+func TestIteratorHasNextDoesNotAdvanceState(t *testing.T) {
+	t.Parallel()
+
+	tree := newTree()
+	tree.Insert(Key("1"), []byte{1})
+	tree.Insert(Key("2"), []byte{2})
+
+	iter := tree.Iterator()
+
+	// HasNext should not advance the iterator state
+	assert.True(t, iter.HasNext())
+	assert.True(t, iter.HasNext())
+
+	// change the iterator state
+	n, err := iter.Next()
+	require.NoError(t, err)
+	assert.Equal(t, Key("1"), n.Key())
+
+	// HasNext remains idempotent
+	assert.True(t, iter.HasNext())
+	assert.True(t, iter.HasNext())
+
+	// advance to the second key
+	n, err = iter.Next()
+	require.NoError(t, err)
+	assert.Equal(t, Key("2"), n.Key())
+
+	// HasNext returns false at the end
+	assert.False(t, iter.HasNext())
+	assert.False(t, iter.HasNext())
+
+	// calling Next after the iterator is exhausted
+	for i := 0; i < 2; i++ {
+		n, err = iter.Next()
+		assert.Nil(t, n, "Next() should return nil after exhaustion")
+		assert.Equal(t, ErrNoMoreNodes, err, "Next() should return ErrNoMoreNodes after exhaustion")
+	}
+}
+
+func TestIteratorEmptyTreeBehavior(t *testing.T) {
+	t.Parallel()
+
+	tree := New()
+	iter := tree.Iterator()
+
+	// HasNext should return false for an empty tree
+	assert.False(t, iter.HasNext())
+	assert.False(t, iter.HasNext())
+
+	// Next should return nil and ErrNoMoreNodes for an empty tree
+	n, err := iter.Next()
+	assert.Nil(t, n)
+	assert.Equal(t, ErrNoMoreNodes, err)
 }
