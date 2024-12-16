@@ -100,7 +100,9 @@ type Tree interface {
 	// ForEach iterates over all the nodes in the tree, invoking a provided callback function for each node.
 	// By default, it processes leaf nodes in ascending order.
 	// The iteration can be customized using options:
-	// - Pass TraverseReverse to iterate over nodes in descending order.
+	// - Pass TraverseLeaf to iterate only over leaf nodes.
+	// - Pass TraverseNode to iterate only over non-leaf nodes.
+	// - Pass TraverseAll to iterate over all nodes in the tree.
 	// The iteration stops if the callback function returns false, allowing for early termination.
 	ForEach(callback Callback, options ...int)
 
