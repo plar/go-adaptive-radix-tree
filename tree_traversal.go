@@ -34,7 +34,7 @@ func (opts traverseOpts) hasAll() bool {
 }
 
 func (opts traverseOpts) hasReverse() bool {
-	return opts&TraverseReverse == TraverseReverse
+	return false
 }
 
 // traverseContext is a context for traversing nodes with 4, 16, or 256 children.
@@ -183,9 +183,7 @@ func traverseOptions(options ...int) traverseOpts {
 		typeOpts = TraverseLeaf // By default filter only leafs
 	}
 
-	orderOpts := opts & TraverseReverse
-
-	return traverseOpts(typeOpts | orderOpts)
+	return traverseOpts(typeOpts)
 }
 
 func traverseFilter(opts traverseOpts, callback Callback) Callback {
@@ -239,7 +237,7 @@ func (tr *tree) traverseChildren(nextFn traverseFunc, children []*nodeRef, cb Ca
 }
 
 func (tr *tree) forEachPrefix(key Key, callback Callback, opts int) traverseAction {
-	opts &= (TraverseLeaf | TraverseReverse) // keep only leaf and reverse options
+	opts &= TraverseLeaf // keep only leaf option
 
 	tr.ForEach(func(n Node) bool {
 		current, ok := n.(*nodeRef)
