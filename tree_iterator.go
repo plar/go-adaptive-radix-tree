@@ -1,14 +1,18 @@
 package art
 
+import "errors"
+
 // state represents the iteration state during tree traversal.
 type state struct {
 	items []*iteratorContext
 }
 
+// push adds a new iterator context to the state.
 func (s *state) push(ctx *iteratorContext) {
 	s.items = append(s.items, ctx)
 }
 
+// current returns the current iterator context and a flag indicating if there is any.
 func (s *state) current() (*iteratorContext, bool) {
 	if len(s.items) == 0 {
 		return nil, false
@@ -17,6 +21,7 @@ func (s *state) current() (*iteratorContext, bool) {
 	return s.items[len(s.items)-1], true
 }
 
+// discard removes the last iterator context from the state.
 func (s *state) discard() {
 	if len(s.items) == 0 {
 		return
@@ -67,6 +72,7 @@ type iterator struct {
 // assert that iterator implements the Iterator interface.
 var _ Iterator = (*iterator)(nil)
 
+// newTreeIterator creates a new tree iterator.
 func newTreeIterator(tr *tree, opts traverseOpts) Iterator {
 	state := &state{}
 	state.push(newIteratorContext(tr.root, opts.hasReverse()))
@@ -83,10 +89,15 @@ func newTreeIterator(tr *tree, opts traverseOpts) Iterator {
 		return it
 	}
 
-	return &bufferedIterator{
+	bit := &bufferedIterator{
 		opts: opts,
 		it:   it,
 	}
+
+	// peek the first node or leaf
+	bit.peek()
+
+	return bit
 }
 
 // hasConcurrentModification checks if the tree has been modified concurrently.
@@ -148,52 +159,67 @@ type bufferedIterator struct {
 	nextErr  error
 }
 
+// HasNext returns true if there are more nodes to iterate.
 func (bit *bufferedIterator) HasNext() bool {
-	for bit.hasNext() {
-		nxt, err := bit.peek()
-		if err != nil {
-			return true
-		}
+	return bit.nextNode != nil
+}
 
-		// are we looking for a leaf node?
-		if bit.hasLeafIterator() && nxt.Kind() == Leaf {
-			return true
-		}
+// Next returns the next node or leaf node and an error if any.
+// ErrNoMoreNodes is returned if there are no more nodes to iterate.
+// ErrConcurrentModification is returned if the tree has been modified concurrently.
+func (bit *bufferedIterator) Next() (Node, error) {
+	current := bit.nextNode
 
-		// are we looking for a non-leaf node?
-		if bit.hasNodeIterator() && nxt.Kind() != Leaf {
-			return true
-		}
+	if !bit.HasNext() {
+		return nil, bit.nextErr
 	}
 
-	bit.resetNext()
+	bit.peek()
 
-	return false
+	// ErrConcurrentModification should be returned immediately.
+	// ErrNoMoreNodes will be return on the next call.
+	if errors.Is(bit.nextErr, ErrConcurrentModification) {
+		return nil, bit.nextErr
+	}
+
+	return current, nil
 }
 
-func (bit *bufferedIterator) Next() (Node, error) {
-	return bit.nextNode, bit.nextErr
-}
-
+// hasLeafIterator checks if the iterator is for leaf nodes.
 func (bit *bufferedIterator) hasLeafIterator() bool {
 	return bit.opts&TraverseLeaf == TraverseLeaf
 }
 
+// hasNodeIterator checks if the iterator is for non-leaf nodes.
 func (bit *bufferedIterator) hasNodeIterator() bool {
 	return bit.opts&TraverseNode == TraverseNode
 }
 
-func (bit *bufferedIterator) hasNext() bool {
-	return bit.it.HasNext()
+// peek looks for the next node or leaf node to iterate.
+func (bit *bufferedIterator) peek() {
+	for {
+		bit.nextNode, bit.nextErr = bit.it.Next()
+		if bit.nextErr != nil {
+			return
+		}
+
+		if bit.matchesFilter() {
+			return
+		}
+	}
 }
 
-func (bit *bufferedIterator) peek() (Node, error) {
-	bit.nextNode, bit.nextErr = bit.it.Next()
+// matchesFilter checks if the next node matches the iterator filter.
+func (bit *bufferedIterator) matchesFilter() bool {
+	// check if the iterator is looking for leaf nodes
+	if bit.hasLeafIterator() && bit.nextNode.Kind() == Leaf {
+		return true
+	}
 
-	return bit.nextNode, bit.nextErr
-}
+	// check if the iterator is looking for non-leaf nodes
+	if bit.hasNodeIterator() && bit.nextNode.Kind() != Leaf {
+		return true
+	}
 
-func (bit *bufferedIterator) resetNext() {
-	bit.nextNode = nil
-	bit.nextErr = nil
+	return false
 }
