@@ -3,6 +3,8 @@ An Adaptive Radix Tree Implementation in Go
 
 [![Coverage Status](https://coveralls.io/repos/github/plar/go-adaptive-radix-tree/badge.svg?branch=master&v=1)](https://coveralls.io/github/plar/go-adaptive-radix-tree?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/plar/go-adaptive-radix-tree)](https://goreportcard.com/report/github.com/plar/go-adaptive-radix-tree) [![GoDoc](https://godoc.org/github.com/plar/go-adaptive-radix-tree?status.svg)](http://godoc.org/github.com/plar/go-adaptive-radix-tree)
 
+> v1.x.x is a deprecated version. All development will be done in [v2](https://github.com/plar/go-adaptive-radix-tree).
+
 This library provides a Go implementation of the Adaptive Radix Tree (ART).
 
 Features:
@@ -15,7 +17,6 @@ Features:
 * Minimum / Maximum value lookups
 * Ordered iteration
 * Prefix-based iteration
-* Reverse iteration support
 * Support for keys with null bytes, any byte array could be a key
 
 # Usage
@@ -93,7 +94,7 @@ Check out the documentation on [godoc.org](http://godoc.org/github.com/plar/go-a
 # Performance
 
 [plar/go-adaptive-radix-tree](https://github.com/plar/go-adaptive-radix-tree) outperforms [kellydunn/go-art](https://github.com/kellydunn/go-art) by avoiding memory allocations during search operations.
-It also provides prefix based and reverse iteration over the tree.
+It also provides prefix based iteration over the tree.
 
 Benchmarks were performed on datasets extracted from different projects:
 - The "Words" dataset contains a list of 235,886 english words. [2]

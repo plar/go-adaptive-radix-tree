@@ -21,9 +21,6 @@ const (
 
 	// Iterate over all nodes in the tree.
 	TraverseAll = TraverseLeaf | TraverseNode
-
-	// Iterate in reverse order.
-	TraverseReverse = 4
 )
 
 // These errors can be returned when iteration over the tree.
@@ -110,13 +107,11 @@ type Tree interface {
 	// ForEachPrefix iterates over all leaf nodes whose keys start with the specified keyPrefix,
 	// invoking a provided callback function for each matching node.
 	// By default, the iteration processes nodes in ascending order.
-	// Use the TraverseReverse option to iterate over nodes in descending order.
 	// Iteration stops if the callback function returns false, allowing for early termination.
-	ForEachPrefix(keyPrefix Key, callback Callback, options ...int)
+	ForEachPrefix(keyPrefix Key, callback Callback)
 
 	// Iterator returns an iterator for traversing leaf nodes in the tree.
 	// By default, the iteration occurs in ascending order.
-	// To traverse nodes in reverse (descending) order, pass the TraverseReverse option.
 	Iterator(options ...int) Iterator
 
 	// Minimum retrieves the leaf node with the smallest key in the tree.

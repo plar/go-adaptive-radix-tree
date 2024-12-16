@@ -153,8 +153,8 @@ func (tr *tree) ForEach(callback Callback, opts ...int) {
 }
 
 // ForEachPrefix iterates over all keys with the given prefix.
-func (tr *tree) ForEachPrefix(key Key, callback Callback, opts ...int) {
-	options := mergeOptions(opts...)
+func (tr *tree) ForEachPrefix(key Key, callback Callback) {
+	options := mergeOptions()
 	tr.forEachPrefix(key, callback, options)
 }
 
