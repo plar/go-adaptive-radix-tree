@@ -59,7 +59,7 @@ func main() {
 	tree.ForEach(func(node art.Node) bool {
 		fmt.Printf("Key: %s, Value: %s\n", node.Key(), node.Value())
 		return true
-	}, art.TraverseReverse)
+	})
 
 	// Iterate over keys with a specific prefix
 	fmt.Println("\nIteration with prefix 'c':")
