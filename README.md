@@ -93,6 +93,28 @@ func main() {
 
 Check out the documentation on [pkg.go.dev/github.com/plar/go-adaptive-radix-tree/v2](https://pkg.go.dev/github.com/plar/go-adaptive-radix-tree/v2).
 
+# Migration from v1 to v2
+
+- update `import` statement
+
+``` 
+from `art "github.com/plar/go-adaptive-radix-tree"`
+  to `art "github.com/plar/go-adaptive-radix-tree/v2"`
+```
+
+- update go module dependency
+
+```
+$ go get github.com/plar/go-adaptive-radix-tree/v2
+$ go mod tidy
+```
+
+If you had implemented your own version of the `Tree` interface, then you need to update the following method to support `options`. These are the only changes in the interface.
+
+```
+	ForEachPrefix(keyPrefix Key, callback Callback, options ...int)
+```
+
 # Performance
 
 [plar/go-adaptive-radix-tree](https://github.com/plar/go-adaptive-radix-tree) outperforms [kellydunn/go-art](https://github.com/kellydunn/go-art) by avoiding memory allocations during search operations.
