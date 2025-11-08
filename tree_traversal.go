@@ -1,5 +1,10 @@
 package art
 
+import (
+	"math"
+	"math/bits"
+)
+
 // traverseAction is an action to be taken during tree traversal.
 type traverseAction int
 
@@ -104,28 +109,40 @@ func (ctx *traverse48Context) ascTraversal() (int, bool) {
 		return node48Max, true
 	}
 
-	for ; ctx.curKeyIdx < node256Max; ctx.curKeyIdx++ {
-		if ctx.n48.hasChild(ctx.curKeyIdx) {
+	for curOffset := ctx.curKeyIdx >> n48bitShift; curOffset < 4; curOffset++ {
+		offset := ctx.curKeyIdx % n48maskLen
+		mask := math.MaxUint64 - (uint64(1) << offset) + 1 // e.g. offset=3 => 0b111...111000
+		curr := ctx.n48.present[curOffset] & mask
+		zeros := bits.TrailingZeros64(curr)
+		if zeros < n48maskLen {
+			ctx.curKeyIdx = curOffset*n48maskLen + zeros
 			ctx.curKeyCh = ctx.n48.keys[ctx.curKeyIdx]
 			ctx.curKeyIdx++
-
 			return int(ctx.curKeyCh), true
 		}
+		ctx.curKeyIdx = 0
 	}
+	ctx.curKeyIdx = node256Max
 
 	return 0, false
 }
 
 // descTraversal traverses the children in descending order.
 func (ctx *traverse48Context) descTraversal() (int, bool) {
-	for ; ctx.curKeyIdx > 0; ctx.curKeyIdx-- {
-		if ctx.n48.hasChild(ctx.curKeyIdx) {
+	for curOffset := ctx.curKeyIdx >> n48bitShift; curOffset >= 0; curOffset-- {
+		offset := ctx.curKeyIdx % n48maskLen
+		mask := uint64(1)<<(offset+1) - 1 // e.g. offset=3 => 0b000...0001111
+		curr := ctx.n48.present[curOffset] & mask
+		zeros := bits.LeadingZeros64(curr)
+		if zeros < n48maskLen {
+			ctx.curKeyIdx = curOffset*n48maskLen + n48maskLen - (zeros + 1)
 			ctx.curKeyCh = ctx.n48.keys[ctx.curKeyIdx]
 			ctx.curKeyIdx--
-
 			return int(ctx.curKeyCh), true
 		}
+		ctx.curKeyIdx = n48maskLen - 1
 	}
+	ctx.curKeyIdx = -1
 
 	if !ctx.zeroChildDone {
 		ctx.zeroChildDone = true
