@@ -189,3 +189,27 @@ func BenchmarkHSKTreeForEach(b *testing.B) {
 	stats := collectStats(tree.Iterator(TraverseAll))
 	assert.Equal(b, treeStats{4995, 1630, 276, 21, 4}, stats)
 }
+
+func BenchmarkN48LooseScan(b *testing.B) {
+	tree := New()
+
+	for i := 0; i < 17; i++ {
+		for j := 0; j < 17; j++ {
+			for k := 0; k < 17; k++ {
+				for l := 0; l < 17; l++ {
+					key := []byte{byte(i), byte(j), byte(k), byte(l)}
+					tree.Insert(key, key)
+				}
+			}
+		}
+	}
+
+	subBench := func(b *testing.B, options ...int) {
+		b.ResetTimer()
+		stats := collectStats(tree.Iterator(options...))
+		assert.Equal(b, treeStats{83521, 0, 0, 5220, 0}, stats)
+	}
+
+	b.Run("Iterator", func(b *testing.B) { subBench(b, TraverseAll) })
+	b.Run("IteratorReverse", func(b *testing.B) { subBench(b, TraverseAll, TraverseReverse) })
+}
