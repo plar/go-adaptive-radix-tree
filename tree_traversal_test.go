@@ -589,3 +589,80 @@ func TestIteratorEmptyTreeBehavior(t *testing.T) {
 	assert.Nil(t, n)
 	assert.Equal(t, ErrNoMoreNodes, err)
 }
+
+func TestIteratorStatsWithReverse(t *testing.T) {
+	t.Parallel()
+
+	// node4Max + 1, node16Max + 1, node48Max + 1 grow the tree to the next node kind.
+	testCases := map[int]Kind{
+		node4Max:      Node4,
+		node4Max + 1:  Node16,
+		node16Max + 1: Node48,
+		node48Max + 1: Node256,
+	}
+	for leafCount, expectedKind := range testCases {
+		tree := New()
+		for i := 0; i < leafCount; i++ {
+			key := Key{byte(i)}
+			tree.Insert(key, key)
+		}
+
+		expectedStats := treeStats{
+			leafCount: leafCount,
+		}
+		switch expectedKind {
+		case Node4:
+			expectedStats.node4Count = 1
+		case Node16:
+			expectedStats.node16Count = 1
+		case Node48:
+			expectedStats.node48Count = 1
+		case Node256:
+			expectedStats.node256Count = 1
+		default:
+			t.Fatalf("unexpected expectedKind: %v", expectedKind)
+		}
+
+		stats := collectStats(tree.Iterator(TraverseAll))
+		assert.Equal(t, expectedStats, stats)
+
+		stats = collectStats(tree.Iterator(TraverseAll, TraverseReverse))
+		assert.Equal(t, expectedStats, stats)
+	}
+}
+
+func TestNode48ReverseIteratorMissingIndexZero(t *testing.T) {
+	t.Parallel()
+
+	tree := New()
+
+	// Insert 17 keys (0..16) to force the tree to grow to a Node48.
+	// Node16 holds up to 16 items; the 17th item forces a grow to Node48.
+	var expected []int
+	for i := 0; i < 17; i++ {
+		tree.Insert(Key{byte(i)}, i)
+		// Pre-build the expected reverse sequence: [16, 15, ..., 0]
+		expected = append([]int{i}, expected...)
+	}
+
+	// Collect values from the reverse iterator
+	var actual []int
+	tree.ForEach(func(node Node) bool {
+		val, _ := node.Value().(int)
+		actual = append(actual, val)
+		return true
+	}, TraverseReverse)
+
+	// This catches the bug (missing 0) AND ensures the sort order is correct.
+	assert.Lenf(t, actual, len(expected), "Length mismatch. Expected %d items, got %d", len(expected), len(actual))
+
+	for i := range expected {
+		if i >= len(actual) {
+			break
+		}
+		if actual[i] != expected[i] {
+			assert.Equal(t, expected[i], actual[i], "Mismatch at index %d. Expected value %d, got %d. \nFull Actual: %v", i, expected[i], actual[i], actual)
+			break // stop after first error
+		}
+	}
+}
