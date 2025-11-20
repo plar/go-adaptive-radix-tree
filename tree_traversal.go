@@ -118,7 +118,7 @@ func (ctx *traverse48Context) ascTraversal() (int, bool) {
 
 // descTraversal traverses the children in descending order.
 func (ctx *traverse48Context) descTraversal() (int, bool) {
-	for ; ctx.curKeyIdx > 0; ctx.curKeyIdx-- {
+	for ; ctx.curKeyIdx >= 0; ctx.curKeyIdx-- {
 		if ctx.n48.hasChild(ctx.curKeyIdx) {
 			ctx.curKeyCh = ctx.n48.keys[ctx.curKeyIdx]
 			ctx.curKeyIdx--
