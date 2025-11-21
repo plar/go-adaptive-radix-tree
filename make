@@ -76,7 +76,7 @@ qa_gosec() {
 ## qa/lint: run golangci-lint
 qa_lint() {
     echo "✔️ Running golangci-lint..."
-    go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 run
+    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.2 run
 }
 
 ## qa/test: run all tests
