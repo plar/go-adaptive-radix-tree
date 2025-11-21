@@ -602,6 +602,7 @@ func TestIteratorStatsWithReverse(t *testing.T) {
 	}
 	for leafCount, expectedKind := range testCases {
 		tree := New()
+
 		for i := 0; i < leafCount; i++ {
 			key := Key{byte(i)}
 			tree.Insert(key, key)
@@ -610,6 +611,7 @@ func TestIteratorStatsWithReverse(t *testing.T) {
 		expectedStats := treeStats{
 			leafCount: leafCount,
 		}
+
 		switch expectedKind {
 		case Node4:
 			expectedStats.node4Count = 1
@@ -639,6 +641,7 @@ func TestNode48ReverseIteratorMissingIndexZero(t *testing.T) {
 	// Insert 17 keys (0..16) to force the tree to grow to a Node48.
 	// Node16 holds up to 16 items; the 17th item forces a grow to Node48.
 	var expected []int
+
 	for i := 0; i < 17; i++ {
 		tree.Insert(Key{byte(i)}, i)
 		// Pre-build the expected reverse sequence: [16, 15, ..., 0]
@@ -647,9 +650,11 @@ func TestNode48ReverseIteratorMissingIndexZero(t *testing.T) {
 
 	// Collect values from the reverse iterator
 	var actual []int
+
 	tree.ForEach(func(node Node) bool {
 		val, _ := node.Value().(int)
 		actual = append(actual, val)
+
 		return true
 	}, TraverseReverse)
 
@@ -660,6 +665,7 @@ func TestNode48ReverseIteratorMissingIndexZero(t *testing.T) {
 		if i >= len(actual) {
 			break
 		}
+
 		if actual[i] != expected[i] {
 			assert.Equal(t, expected[i], actual[i], "Mismatch at index %d. Expected value %d, got %d. \nFull Actual: %v", i, expected[i], actual[i], actual)
 			break // stop after first error
