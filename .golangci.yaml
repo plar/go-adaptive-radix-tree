@@ -1,40 +1,61 @@
-linters:
-  enable-all: true
-
-  disable:
-    - testpackage
-    - ireturn
-    - varnamelen
-    - gofumpt
-    - exhaustruct
-
-issues:  
-  exclude-files:  
-    - tree_dump*
-
-linters-settings:
-  depguard:
-    rules:
-      main:
-        files:
-          - $all
-          - "!$test"
-        allow:
-          - $gostd
-          - github.com/google # all google packages
-      test:
-        files:
-          - "$test"
-        allow:
-          - $gostd
-          - github.com/stretchr
-  exhaustruct:
-    exclude:
-      - ".*_test.go"
-
+version: "2"
 output:
-  sort-results: true
   sort-order:
-    - file # filepath, line, and column.
+    - file
     - severity
     - linter
+linters:
+  enable:
+    - wsl_v5
+  disable:
+    - exhaustruct
+    - ireturn
+    - testpackage
+    - varnamelen
+  settings:
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+            - '!$test'
+          allow:
+            - $gostd
+            - github.com/google
+        test:
+          files:
+            - $test
+          allow:
+            - $gostd
+            - github.com/stretchr
+    exhaustruct:
+      exclude:
+        - .*_test.go
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - tree_dump
+      - third_party
+      - builtin
+      - examples
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - tree_dump*
+      - third_party$
+      - builtin$
+      - examples$
